@@ -92,6 +92,14 @@ export function IconChevronDown({ size = 16, color = 'currentColor', strokeWidth
   return base(size, color, strokeWidth, <polyline points="6 9 12 15 18 9" />);
 }
 
+export function IconChevronLeft({ size = 16, color = 'currentColor', strokeWidth = 2 }: IconProps) {
+  return base(size, color, strokeWidth, <polyline points="15 18 9 12 15 6" />);
+}
+
+export function IconChevronRight({ size = 16, color = 'currentColor', strokeWidth = 2 }: IconProps) {
+  return base(size, color, strokeWidth, <polyline points="9 18 15 12 9 6" />);
+}
+
 export function IconAlertTriangle({ size = 20, color = 'currentColor', strokeWidth = 1.8 }: IconProps) {
   return base(size, color, strokeWidth, <>
     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />

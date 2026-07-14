@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, Fragment, type FormEvent } from 'react';
 import {
-  GANTT_MONTHS,
   PROJECT_SIZES, PROJECT_PHASES, PROJECT_TYPES, PRIORITY_LEVELS, PROGRESS_STATUSES,
   type Project, type ProgressStatus, type PriorityLevel, type ProjectSize,
 } from '../data/mockData';
@@ -16,7 +15,19 @@ import {
   getUniqueProjectNames,
   groupProjectsByCategory,
 } from '../lib/projectNames';
-import { IconTable, IconCalendar, IconSearch, IconPlus, IconEdit, IconTrash } from '../icons';
+import {
+  buildTimelineWindow,
+  defaultWeekAnchor,
+  projectBarInWindow,
+  shiftWeeks,
+  startOfWeek,
+  todayMarkerPercent,
+  type RoadmapScale,
+} from '../lib/roadmapTimeline';
+import {
+  IconTable, IconCalendar, IconSearch, IconPlus, IconEdit, IconTrash,
+  IconChevronLeft, IconChevronRight,
+} from '../icons';
 
 /* ─── Draft type ─────────────────────────────────────────────────────────── */
 interface ProjectDraft {
@@ -436,9 +447,28 @@ function TableView({
 }
 
 /* ─── Gantt / Roadmap ────────────────────────────────────────────────────── */
-function RoadmapView({ projects, onViewProject }: { projects: Project[]; onViewProject: (id: string) => void }) {
-  const totalMonths = GANTT_MONTHS.length;
+function RoadmapView({
+  projects,
+  onViewProject,
+  scale,
+  weekAnchor,
+  onScaleChange,
+  onWeekAnchorChange,
+}: {
+  projects: Project[];
+  onViewProject: (id: string) => void;
+  scale: RoadmapScale;
+  weekAnchor: Date;
+  onScaleChange: (scale: RoadmapScale) => void;
+  onWeekAnchorChange: (date: Date) => void;
+}) {
   const groups = useMemo(() => groupProjectsByCategory(projects), [projects]);
+  const timeline = useMemo(
+    () => buildTimelineWindow(scale, weekAnchor),
+    [scale, weekAnchor]
+  );
+  const todayPct = todayMarkerPercent(timeline);
+  const colCount = timeline.columns.length;
 
   if (projects.length === 0) {
     return (
@@ -449,80 +479,147 @@ function RoadmapView({ projects, onViewProject }: { projects: Project[]; onViewP
   }
 
   return (
-    <div className="mac-table-wrap mac-table-wrap--roadmap">
-      <table className="mac-table mac-table--roadmap">
-        <thead>
-          <tr>
-            <th style={{ width: '20%' }}>Project</th>
-            <th style={{ width: '9%' }}>Status</th>
-            <th style={{ width: '9%' }}>Assignees</th>
-            {GANTT_MONTHS.map((m) => (
-              <th key={m} className="gantt-month-header">{m}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map((group) => (
-            <Fragment key={group.projectName}>
-              {group.projects.length > 1 && (
-                <tr key={`roadmap-cat-${group.projectName}`} className="project-category-row">
-                  <td colSpan={3 + totalMonths}>
-                    <span className="project-category__title">{group.projectName}</span>
-                    <span className="project-category__meta">
-                      {group.projects.length} engagements
-                    </span>
-                  </td>
-                </tr>
-              )}
-              {group.projects.map((proj) => {
-            const hasTimeline = Boolean(proj.startDate && proj.dueDate);
-            const barLeft  = hasTimeline ? (dateToGanttStart(proj.startDate) / totalMonths) * 100 : 0;
-            const barWidth = hasTimeline
-              ? Math.min((datesToGanttDuration(proj.startDate, proj.dueDate) / totalMonths) * 100, 100 - barLeft)
-              : 0;
-            const dateLabel = hasTimeline
-              ? `${proj.startDate.slice(5, 10)} → ${proj.dueDate.slice(5, 10)}`
-              : '';
-            return (
-              <tr key={proj.id}>
-                <td>
-                  <ProjectTitle
-                    project={proj}
-                    onClick={() => onViewProject(proj.id)}
-                    showCategory={group.projects.length === 1}
-                  />
-                </td>
-                <td><StatusBadge status={proj.progress} /></td>
-                <td>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <AvatarGroup assignees={proj.dedicated} size={20} />
-                    {proj.backup.length > 0 && <AvatarGroup assignees={proj.backup} size={18} />}
-                  </div>
-                </td>
-                <td colSpan={totalMonths}>
-                  <div className="gantt-track">
-                    <div className="gantt-track__grid" aria-hidden="true">
-                      {GANTT_MONTHS.map((m) => (
-                        <div key={m} className="gantt-track__month" />
-                      ))}
-                    </div>
-                    {hasTimeline && barWidth > 0 && (
-                      <div
-                        className="gantt-bar"
-                        style={{ left: `${barLeft}%`, width: `${barWidth}%`, background: PROGRESS_GANTT_COLORS[proj.progress] }}
-                      >
-                        <span className="gantt-bar__label">{dateLabel}</span>
-                      </div>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-              })}
-            </Fragment>
+    <div className="roadmap">
+      <div className="roadmap-toolbar">
+        <div className="mac-segmented" role="tablist" aria-label="Timeline scale">
+          {(['month', 'week'] as RoadmapScale[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={scale === s}
+              className={`mac-segmented__btn${scale === s ? ' mac-segmented__btn--active' : ''}`}
+              onClick={() => onScaleChange(s)}
+            >
+              {s === 'month' ? 'Month' : 'Week'}
+            </button>
           ))}
-        </tbody>
-      </table>
+        </div>
+
+        {scale === 'week' && (
+          <div className="roadmap-nav">
+            <button
+              type="button"
+              className="mac-btn mac-btn--icon"
+              aria-label="Previous weeks"
+              onClick={() => onWeekAnchorChange(shiftWeeks(weekAnchor, -1))}
+            >
+              <IconChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              className="mac-btn mac-btn--secondary"
+              onClick={() => onWeekAnchorChange(startOfWeek(new Date()))}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className="mac-btn mac-btn--icon"
+              aria-label="Next weeks"
+              onClick={() => onWeekAnchorChange(shiftWeeks(weekAnchor, 1))}
+            >
+              <IconChevronRight size={16} />
+            </button>
+            <p className="roadmap-nav__range">{timeline.rangeLabel}</p>
+          </div>
+        )}
+
+        {scale === 'month' && (
+          <p className="roadmap-nav__range">{timeline.rangeLabel}</p>
+        )}
+      </div>
+
+      <div className={`mac-table-wrap mac-table-wrap--roadmap${scale === 'week' ? ' mac-table-wrap--roadmap-week' : ''}`}>
+        <table className={`mac-table mac-table--roadmap mac-table--roadmap-${scale}`}>
+          <thead>
+            <tr>
+              <th style={{ width: '20%' }}>Project</th>
+              <th style={{ width: '9%' }}>Status</th>
+              <th style={{ width: '9%' }}>Assignees</th>
+              {timeline.columns.map((col) => (
+                <th key={col.key} className="gantt-scale-header">
+                  <span className="gantt-scale-header__label">{col.label}</span>
+                  {col.subLabel && (
+                    <span className="gantt-scale-header__sub">{col.subLabel}</span>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) => (
+              <Fragment key={group.projectName}>
+                {group.projects.length > 1 && (
+                  <tr className="project-category-row">
+                    <td colSpan={3 + colCount}>
+                      <span className="project-category__title">{group.projectName}</span>
+                      <span className="project-category__meta">
+                        {group.projects.length} engagements
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {group.projects.map((proj) => {
+                  const bar = projectBarInWindow(proj.startDate, proj.dueDate, timeline);
+                  const dateLabel = proj.startDate && proj.dueDate
+                    ? `${proj.startDate.slice(5, 10)} → ${proj.dueDate.slice(5, 10)}`
+                    : '';
+                  return (
+                    <tr key={proj.id}>
+                      <td>
+                        <ProjectTitle
+                          project={proj}
+                          onClick={() => onViewProject(proj.id)}
+                          showCategory={group.projects.length === 1}
+                        />
+                      </td>
+                      <td><StatusBadge status={proj.progress} /></td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <AvatarGroup assignees={proj.dedicated} size={20} />
+                          {proj.backup.length > 0 && <AvatarGroup assignees={proj.backup} size={18} />}
+                        </div>
+                      </td>
+                      <td colSpan={colCount}>
+                        <div
+                          className="gantt-track"
+                          style={{ ['--gantt-cols' as string]: String(colCount) }}
+                        >
+                          <div className="gantt-track__grid" aria-hidden="true">
+                            {timeline.columns.map((col) => (
+                              <div key={col.key} className="gantt-track__slot" />
+                            ))}
+                          </div>
+                          {todayPct != null && (
+                            <div
+                              className="gantt-today"
+                              style={{ left: `${todayPct}%` }}
+                              title="Today"
+                            />
+                          )}
+                          {bar && (
+                            <div
+                              className="gantt-bar"
+                              style={{
+                                left: `${bar.left}%`,
+                                width: `${bar.width}%`,
+                                background: PROGRESS_GANTT_COLORS[proj.progress],
+                              }}
+                            >
+                              <span className="gantt-bar__label">{dateLabel}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -545,6 +642,8 @@ export function ProjectMasterPage({
   const { members } = useTeam();
 
   const [view, setView]         = useState<ViewMode>('table');
+  const [roadmapScale, setRoadmapScale] = useState<RoadmapScale>('month');
+  const [weekAnchor, setWeekAnchor] = useState<Date>(() => startOfWeek(new Date()));
   const [search, setSearch]     = useState('');
   const [projectNameFilter, setProjectNameFilter] = useState<string>('all');
   const [progressFilter, setProgressFilter] = useState<ProgressFilter>('all');
@@ -568,6 +667,13 @@ export function ProjectMasterPage({
       return matchesSearch && matchesProgress && matchesProjectName;
     });
   }, [projects, search, progressFilter, projectNameFilter]);
+
+  function handleRoadmapScaleChange(next: RoadmapScale) {
+    setRoadmapScale(next);
+    if (next === 'week') {
+      setWeekAnchor(defaultWeekAnchor(filteredProjects));
+    }
+  }
 
   const categoryCount = useMemo(
     () => groupProjectsByCategory(filteredProjects).length,
@@ -742,7 +848,14 @@ export function ProjectMasterPage({
             onViewProject={onViewProject}
           />
         ) : (
-          <RoadmapView projects={filteredProjects} onViewProject={onViewProject} />
+          <RoadmapView
+            projects={filteredProjects}
+            onViewProject={onViewProject}
+            scale={roadmapScale}
+            weekAnchor={weekAnchor}
+            onScaleChange={handleRoadmapScaleChange}
+            onWeekAnchorChange={setWeekAnchor}
+          />
         )}
         <div className="mac-pagination">
           <p className="mac-pagination__info">

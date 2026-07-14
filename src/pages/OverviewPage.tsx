@@ -206,7 +206,6 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
                   <tr key={p.id}>
                     <td>
                       <ProjectTitle project={p} onClick={() => onViewProject(p.id)} showCategory />
-                      <p className="mac-table__secondary">{p.phase} · {p.type}</p>
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
