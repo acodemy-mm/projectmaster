@@ -8,6 +8,7 @@ import {
 } from '../data/mockData';
 import { Avatar } from '../components/Avatar';
 import { calculateMemberWorkRate } from '../lib/workRate';
+import { formatMembershipDuration, formatJoinDate } from '../lib/memberTenure';
 import { IconEdit, IconTrash, IconUsers } from '../icons';
 
 interface DraftMember {
@@ -138,6 +139,21 @@ export function TeamSetupPage() {
                 {MEMBER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </label>
+            <label className="team-form__field">
+              Join date
+              <input
+                type="date"
+                value={draft.joinDate}
+                onChange={(e) => setDraft({ ...draft, joinDate: e.target.value })}
+                required
+              />
+            </label>
+            <div className="team-form__field">
+              <span>Duration</span>
+              <p className="team-form__duration">
+                {formatMembershipDuration(draft.joinDate)}
+              </p>
+            </div>
             <label className="team-form__field team-form__field--wide">
               Primary focus
               <input
@@ -199,6 +215,8 @@ export function TeamSetupPage() {
                   <th>Member</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>Join date</th>
+                  <th>Duration</th>
                   <th>Work Rate</th>
                   <th>Primary Focus</th>
                   <th>Projects</th>
@@ -225,6 +243,8 @@ export function TeamSetupPage() {
                         {m.status}
                       </span>
                     </td>
+                    <td className="mac-table__secondary">{formatJoinDate(m.joinDate)}</td>
+                    <td className="mac-table__secondary">{formatMembershipDuration(m.joinDate)}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
                         <div style={{ width: 70, height: 6, background: 'var(--mac-bg-control)', borderRadius: 99, overflow: 'hidden' }}>

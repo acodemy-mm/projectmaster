@@ -4,6 +4,7 @@ import { useProjects } from '../context/ProjectContext';
 import { StatusBadge, PriorityBadge, SizeBadge } from '../components/Badge';
 import { Avatar } from '../components/Avatar';
 import { composeProjectName } from '../lib/projectNames';
+import { formatJoinDate, formatMembershipDuration } from '../lib/memberTenure';
 
 interface Props {
   memberId: string;
@@ -80,7 +81,7 @@ export function MemberDetailPage({ memberId, onBack }: Props) {
         <div className="member-hero__info">
           <h1 className="page-title" style={{ marginBottom: 2 }}>{member.name}</h1>
           <p style={{ fontSize: 13, color: 'var(--mac-text-secondary)', marginBottom: 8 }}>{member.role}</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{
               padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600,
               background: member.status === 'Busy' ? 'var(--tint-warning-bg)' : 'var(--tint-success-bg)',
@@ -89,7 +90,14 @@ export function MemberDetailPage({ memberId, onBack }: Props) {
               {member.status}
             </span>
             <span style={{ fontSize: 12, color: 'var(--mac-text-tertiary)' }}>
-              Joined {new Date(member.joinDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              Joined {formatJoinDate(member.joinDate)}
+            </span>
+            <span style={{
+              padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+              background: 'var(--tint-info-bg)',
+              color: 'var(--tint-info-fg)',
+            }}>
+              Duration {formatMembershipDuration(member.joinDate)}
             </span>
           </div>
         </div>
@@ -99,6 +107,8 @@ export function MemberDetailPage({ memberId, onBack }: Props) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        <StatTile label="Join date" value={formatJoinDate(member.joinDate)} sub="team start date" />
+        <StatTile label="Duration" value={formatMembershipDuration(member.joinDate)} sub="time on team" />
         <StatTile label="Dedicated Projects" value={dedicatedProjects.length} sub="as lead designer" />
         <StatTile label="Backup Projects" value={backupProjects.length} sub="as support" />
         <StatTile label="Availability" value={`${available}%`}
