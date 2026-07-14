@@ -1,0 +1,209 @@
+/* =====================================================
+   VIRYA DESIGN SYSTEM — CSS Token Mapping (V 1.0)
+   Source: [Virya] Style Guide — exact values resolved
+   via Figma Plugin API (Core + System collections).
+   Token priority: Component → System → Core primitives.
+   The presentation aliases (--mac-*, --color-*) are kept
+   for backward-compat but now point at Virya values.
+   ===================================================== */
+
+:root {
+  /* ============ CORE — Primitive ramps ============ */
+  /* Primary (brand navy / interactive blue) */
+  --v-primary-50:  #fafcff;
+  --v-primary-100: #f0f5ff;
+  --v-primary-200: #e1ecfe;
+  --v-primary-300: #92bafb;
+  --v-primary-400: #1464eb;   /* interactive accent */
+  --v-primary-500: #002c76;   /* brand base navy */
+  --v-primary-600: #012460;
+  --v-primary-700: #011b47;
+  --v-primary-800: #03122b;
+  --v-primary-900: #010913;
+
+  /* Secondary (maroon) */
+  --v-secondary-400: #c94a50;
+  --v-secondary-500: #b51f26;
+  --v-secondary-600: #911218;
+
+  /* Neutral */
+  --v-neutral-50:  #fdfdfd;
+  --v-neutral-100: #fafafa;
+  --v-neutral-200: #f5f5f5;
+  --v-neutral-300: #e6e6e6;
+  --v-neutral-400: #d6d6d6;
+  --v-neutral-500: #b0b0b0;
+  --v-neutral-600: #949494;
+  --v-neutral-700: #666666;
+  --v-neutral-800: #424242;
+  --v-neutral-900: #1a1a1a;
+
+  /* Success */
+  --v-success-100: #e8fde8;
+  --v-success-200: #b6f7b6;
+  --v-success-300: #88e788;
+  --v-success-400: #0ab80a;
+  --v-success-500: #008a00;
+  --v-success-600: #016f01;
+
+  /* Warning */
+  --v-warning-100: #fef7eb;
+  --v-warning-200: #fceacf;
+  --v-warning-300: #f2c788;
+  --v-warning-400: #eda63b;
+  --v-warning-500: #d28107;
+  --v-warning-600: #a86706;
+
+  /* Critical */
+  --v-critical-100: #fef0f0;
+  --v-critical-200: #fecdcd;
+  --v-critical-300: #fb9d9d;
+  --v-critical-400: #e23c3c;
+  --v-critical-500: #b30909;
+  --v-critical-600: #950404;
+
+  /* Info */
+  --v-info-100: #ecf6fe;
+  --v-info-200: #cee8fd;
+  --v-info-300: #82c3f7;
+  --v-info-400: #3b91d8;
+  --v-info-500: #0b7ad5;
+  --v-info-600: #024db1;
+
+  /* ============ SYSTEM — Semantic tint tokens ============ */
+  /* Soft status surfaces (minimal/soft fills) + matching text */
+  --tint-primary-bg:   var(--v-primary-100);
+  --tint-primary-fg:   var(--v-primary-500);
+  --tint-success-bg:   var(--v-success-100);
+  --tint-success-fg:   var(--v-success-500);
+  --tint-warning-bg:   var(--v-warning-100);
+  --tint-warning-fg:   var(--v-warning-600);
+  --tint-critical-bg:  var(--v-critical-100);
+  --tint-critical-fg:  var(--v-critical-500);
+  --tint-info-bg:      var(--v-info-100);
+  --tint-info-fg:      var(--v-info-600);
+  --tint-neutral-bg:   var(--v-neutral-200);
+  --tint-neutral-fg:   var(--v-neutral-700);
+
+  /* ============ CORE — Numeric: Spacing ============ */
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-7: 28px;
+  --spacing-8: 32px;
+  --spacing-9: 36px;
+  /* System spacing aliases */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+
+  /* ============ CORE — Numeric: Radius ============ */
+  --radius-0: 0px;
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-3: 12px;
+  --radius-4: 16px;
+  --radius-5: 20px;
+  --radius-6: 24px;
+  --radius-full: 9999px;
+  /* System radius aliases */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+
+  /* ============ Elevation (Virya) ============ */
+  /* x / y / blur from Virya Elevation tokens */
+  --elevation-sm: 0 1px 3px rgba(3, 18, 43, 0.06), 0 0 1px rgba(3, 18, 43, 0.08);
+  --elevation-md: 0 2px 7px rgba(3, 18, 43, 0.08), 0 1px 2px rgba(3, 18, 43, 0.06);
+  --elevation-lg: 0 4px 16px rgba(3, 18, 43, 0.12), 0 2px 4px rgba(3, 18, 43, 0.06);
+
+  /* ============ Typography — Virya (Poppins) ============ */
+  --font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* Header */
+  --text-h5-size: 22px;     --text-h5-height: 30px;   --text-h5-weight: 600;
+  --text-h6-size: 18px;     --text-h6-height: 26px;   --text-h6-weight: 600;
+  /* Title */
+  --text-title1-size: 16px; --text-title1-height: 24px;
+  --text-title2-size: 14px; --text-title2-height: 20px;
+  /* Body */
+  --text-body1-size: 14px;  --text-body1-height: 20px;
+  --text-body2-size: 13px;  --text-body2-height: 18px;
+  /* Label */
+  --text-label1-size: 12px; --text-label1-height: 16px;
+  --text-label2-size: 11px; --text-label2-height: 14px;
+  --text-label3-size: 10px; --text-label3-height: 13px;
+
+  /* ============ PRESENTATION ALIASES (mapped to Virya) ============ */
+  /* Surfaces / backgrounds */
+  --mac-bg-window:        var(--v-neutral-200);   /* app canvas */
+  --mac-bg-sidebar:       var(--v-neutral-50);
+  --mac-bg-toolbar:       var(--v-neutral-50);
+  --mac-bg-card:          #ffffff;
+  --mac-bg-grouped:       var(--v-neutral-200);
+  --mac-bg-control:       var(--v-neutral-200);
+  --mac-bg-control-hover: var(--v-neutral-300);
+  --mac-bg-row-hover:     var(--v-primary-100);
+  --mac-bg-row-selected:  var(--v-primary-200);
+
+  /* Lines */
+  --mac-separator:        var(--v-neutral-300);
+  --mac-border:           var(--v-neutral-300);
+
+  /* Text */
+  --mac-text-primary:     var(--v-neutral-900);
+  --mac-text-secondary:   var(--v-neutral-700);
+  --mac-text-tertiary:    var(--v-neutral-500);
+
+  /* Brand + interactive */
+  --mac-accent:           var(--v-primary-500);   /* brand navy = primary action */
+  --mac-accent-hover:     var(--v-primary-600);
+  --mac-accent-bright:    var(--v-primary-400);   /* links / focus */
+
+  /* Status */
+  --mac-green:            var(--v-success-500);
+  --mac-orange:           var(--v-warning-600);
+  --mac-red:              var(--v-critical-500);
+  --mac-purple:           var(--v-info-600);
+
+  /* Radii (presentation) */
+  --mac-radius-window:    16px;
+  --mac-radius-card:      12px;
+  --mac-radius-control:   8px;
+  --mac-radius-pill:      9999px;
+
+  /* Shadows (presentation → Virya elevation) */
+  --mac-shadow-sm:        var(--elevation-sm);
+  --mac-shadow-segment:   var(--elevation-sm);
+
+  /* Legacy --color-* aliases still referenced in a few components */
+  --color-surface-primary-base:    var(--v-primary-500);
+  --color-surface-primary-soft:    var(--v-primary-200);
+  --color-surface-primary-subtle:  var(--v-primary-300);
+  --color-surface-neutral-minimal: #ffffff;
+  --color-surface-neutral-soft:    var(--v-neutral-200);
+  --color-surface-neutral-subtle:  var(--v-neutral-300);
+  --color-surface-success-subtle:  var(--v-success-300);
+  --color-surface-success-soft:    var(--v-success-200);
+  --color-surface-warning-soft:    var(--v-warning-200);
+  --color-surface-critical-subtle: var(--v-critical-300);
+  --color-surface-critical-soft:   var(--v-critical-200);
+  --color-text-primary-base:       var(--v-primary-500);
+  --color-text-success-base:       var(--v-success-500);
+  --color-text-warning-base:       var(--v-warning-500);
+  --color-text-critical-base:      var(--v-critical-500);
+  --color-border-neutral-subtle:   var(--v-neutral-300);
+  --color-text-on-inverse:         var(--v-neutral-50);
+
+  /* Layout */
+  --blur: saturate(180%) blur(20px);
+  --mac-blur: var(--blur);
+  --sidebar-width: 240px;
+  --titlebar-height: 52px;
+  --toolbar-height: 44px;
+}
