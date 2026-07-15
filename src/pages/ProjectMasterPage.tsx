@@ -655,6 +655,17 @@ export function ProjectMasterPage({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft]       = useState<ProjectDraft>(emptyDraft());
 
+  /* Prefer month roadmap on narrow viewports — week columns are too dense */
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const sync = () => {
+      if (mq.matches) setRoadmapScale('month');
+    };
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
   const filteredProjects = useMemo(() => {
     const query = search.trim().toLowerCase();
     const timelineWindow = resolveTimelineWindow(timelineFilter);

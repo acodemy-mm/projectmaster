@@ -25,6 +25,7 @@ export function Avatar({ initials, color, size = 28, title, src }: AvatarProps) 
         height: size,
         background: hasImage ? 'var(--mac-bg-control)' : color,
         fontSize: size * 0.36,
+        ...(hasImage ? { borderColor: color } : null),
       }}
     >
       {hasImage ? (

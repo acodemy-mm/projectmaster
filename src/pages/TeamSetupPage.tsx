@@ -36,7 +36,7 @@ function emptyDraft(): DraftMember {
 
 export function TeamSetupPage() {
   const { isSuperAdmin } = useAuth();
-  const { members, addMember, updateMember, removeMember, resetMembers, error: teamError } = useTeam();
+  const { members, addMember, updateMember, removeMember, error: teamError } = useTeam();
   const { projects } = useProjects();
 
   const [showForm, setShowForm] = useState(false);
@@ -151,14 +151,9 @@ export function TeamSetupPage() {
           </p>
         </div>
         {isSuperAdmin && (
-          <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
-            <button type="button" className="mac-btn mac-btn--secondary" onClick={resetMembers}>
-              Reset roster
-            </button>
-            <button type="button" className="mac-btn mac-btn--primary" onClick={openCreate}>
-              + Add member
-            </button>
-          </div>
+          <button type="button" className="mac-btn mac-btn--primary" onClick={openCreate}>
+            + Add member
+          </button>
         )}
       </header>
 

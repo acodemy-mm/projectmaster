@@ -206,4 +206,10 @@
   --sidebar-width: 240px;
   --titlebar-height: 52px;
   --toolbar-height: 44px;
+  /* Content width: comfortable on desktop, fluid on smaller viewports */
+  --content-max: 1280px;
+  --content-max-wide: 1440px;
+  --page-pad-x: clamp(16px, 3.2vw, 48px);
+  --page-pad-y: clamp(20px, 2.5vw, 36px);
+  --touch-min: 44px;
 }

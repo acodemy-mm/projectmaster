@@ -4,6 +4,7 @@
 .app-shell {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--mac-bg-window);
 }
@@ -35,8 +36,11 @@
 }
 
 .page {
-  padding: var(--spacing-8) 40px;
-  max-width: 1240px;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--page-pad-y) var(--page-pad-x);
+  box-sizing: border-box;
 }
 
 .page-header {
@@ -668,6 +672,8 @@
 /* ── Table (macOS list style) ── */
 .mac-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .mac-table {
@@ -949,6 +955,11 @@
 
 .mac-avatar--image {
   padding: 0;
+  /* Stroke uses member avatarColor via inline borderColor / box-shadow */
+  border-width: 2px;
+  border-style: solid;
+  overflow: hidden;
+  background-clip: padding-box;
 }
 
 .mac-avatar__img {
@@ -956,6 +967,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50%;
 }
 
 .avatar-group {
@@ -1001,22 +1013,20 @@
 .mobile-nav-trigger {
   display: none;
   position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 20;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 60;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--mac-radius-md);
   background: var(--mac-bg-card) !important;
   border: 0.5px solid var(--mac-border);
   box-shadow: var(--mac-shadow-sm);
-}
-
-@media (max-width: 768px) {
-  .mobile-nav-trigger {
-    display: flex !important;
-  }
-
-  .page {
-    padding-top: 48px;
-  }
 }
 
 /* ── Login screen ── */
@@ -1217,9 +1227,9 @@
   }
 }
 
-/* ── Wide pages ── */
+/* ── Wide pages (data-heavy: Master, Overview, Team) ── */
 .page--wide {
-  max-width: 1200px;
+  max-width: var(--content-max-wide);
 }
 
 /* ── Member card grid ── */
@@ -1328,7 +1338,9 @@
 .section-header {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   margin-bottom: 4px;
 }
 
@@ -1610,15 +1622,12 @@
 /* ── main-content ── */
 .main-content {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
   background: var(--mac-bg-window);
   position: relative;
-}
-
-/* ── page--wide ── */
-.page--wide {
-  max-width: 1200px;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── stat-tile additions ── */
@@ -1640,14 +1649,48 @@
   color: var(--mac-text-primary);
 }
 
-/* ── Sidebar overlay mobile ── */
+/* ── Sidebar overlay (shown when Sidebar renders it) ── */
 .sidebar-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 49;
   backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* ── Tablet / mid-width ── */
+@media (max-width: 1100px) {
+  .page,
+  .page--wide {
+    max-width: 100%;
+  }
+
+  .page-header-row {
+    gap: 12px;
+  }
+
+  .toolbar-row {
+    gap: 8px;
+  }
+
+  .toolbar-filters {
+    width: 100%;
+  }
+
+  .mac-search {
+    flex: 1 1 200px;
+    max-width: none;
+  }
+
+  .member-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
@@ -1655,14 +1698,20 @@
     flex-direction: column;
   }
 
+  .sidebar-overlay {
+    display: block;
+  }
+
   .desktop-sidebar.mac-sidebar {
     position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
+    width: min(var(--sidebar-width), 86vw);
     z-index: 50;
-    transform: translateX(-100%);
+    transform: translateX(-105%);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
   }
 
   .desktop-sidebar.mac-sidebar.sidebar--open {
@@ -1671,17 +1720,21 @@
 
   .main-content {
     width: 100%;
-    min-height: 100vh;
-    -webkit-overflow-scrolling: touch;
+    min-height: 100dvh;
   }
 
-  .page {
-    padding: 52px 16px 24px;
-    max-width: none;
+  .mobile-nav-trigger {
+    display: flex !important;
   }
 
+  .page,
   .page--wide {
     max-width: none;
+    padding:
+      calc(var(--touch-min) + 16px + env(safe-area-inset-top, 0px))
+      max(16px, env(safe-area-inset-right, 0px))
+      calc(24px + env(safe-area-inset-bottom, 0px))
+      max(16px, env(safe-area-inset-left, 0px));
   }
 
   .page-title {
@@ -1698,12 +1751,19 @@
   .page-header-row .mac-btn,
   .page-header-row .mac-segmented {
     width: 100%;
+    min-height: var(--touch-min);
   }
 
   .page-header-row > div:last-child {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .page-header-row .timeline-filter {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .toolbar-row {
@@ -1715,19 +1775,29 @@
     max-width: none;
     min-width: 0;
     width: 100%;
+    height: var(--touch-min);
   }
 
-  .toolbar-filters {
+  .toolbar-filters,
+  .timeline-filter {
     width: 100%;
     flex-direction: column;
+    align-items: stretch;
   }
 
   .toolbar-filter {
     width: 100%;
   }
 
-  .toolbar-filter__select {
+  .toolbar-filter__select,
+  .toolbar-filter__date {
     width: 100%;
+    min-width: 0;
+    height: var(--touch-min);
+  }
+
+  .timeline-filter__sep {
+    display: none;
   }
 
   .stat-grid,
@@ -1764,6 +1834,7 @@
 
   .member-workrate {
     margin-left: 0;
+    width: 100%;
   }
 
   .member-stat-row {
@@ -1777,6 +1848,7 @@
 
   .project-detail__hero .mac-btn {
     width: 100%;
+    min-height: var(--touch-min);
     justify-content: center;
   }
 
@@ -1797,6 +1869,37 @@
     padding: 10px 12px;
   }
 
+  .roadmap-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .roadmap-nav {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .roadmap-nav .mac-btn {
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+  }
+
+  .mac-table--roadmap-week .gantt-scale-header {
+    min-width: 56px;
+  }
+
+  .mac-btn {
+    min-height: 40px;
+  }
+
+  .mac-btn--icon {
+    width: var(--touch-min);
+    height: var(--touch-min);
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+  }
+
   .mac-alert {
     flex-direction: column;
   }
@@ -1813,10 +1916,6 @@
   .overview-empty.mac-group {
     padding: 24px 16px;
   }
-
-  .mobile-nav-trigger {
-    display: flex !important;
-  }
 }
 
 @media (max-width: 480px) {
@@ -1832,14 +1931,19 @@
   .mac-segmented__btn {
     flex: 1;
     justify-content: center;
+    min-height: var(--touch-min);
   }
 
   .login-screen {
-    padding: 16px;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
   }
 
   .login-card {
     padding: 22px 18px 18px;
+  }
+
+  .mac-table {
+    min-width: 560px;
   }
 }
 
