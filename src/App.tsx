@@ -55,7 +55,7 @@ function PortalApp() {
         <ProjectDetailPage
           projectId={viewingProjectId}
           onBack={() => setViewingProjectId(null)}
-          backLabel={projectDetailSource === 'overview' ? 'Back to Overview' : 'Back to Project Master'}
+          backLabel={projectDetailSource === 'overview' ? 'Back to Project Overview' : 'Back to Project Master'}
           onEditProject={isSuperAdmin ? () => handleEditProject(viewingProjectId) : undefined}
         />
       );

@@ -1,20 +1,28 @@
 import { useState, useEffect, useMemo, Fragment, type FormEvent } from 'react';
 import {
   PROJECT_SIZES, PROJECT_PHASES, PROJECT_TYPES, PRIORITY_LEVELS, PROGRESS_STATUSES,
+  progressSortRank,
   type Project, type ProgressStatus, type PriorityLevel, type ProjectSize,
 } from '../data/mockData';
 import { useProjects, dateToGanttStart, datesToGanttDuration } from '../context/ProjectContext';
 import { useTeam } from '../context/TeamContext';
 import { useAuth } from '../auth/AuthContext';
 import { StatusBadge, PriorityBadge, SizeBadge } from '../components/Badge';
-import { AvatarGroup } from '../components/Avatar';
+import { Avatar, AvatarGroup } from '../components/Avatar';
 import { ProjectTitle } from '../components/ProjectTitle';
+import { TimelineFilter } from '../components/TimelineFilter';
 import { PROGRESS_GANTT_COLORS } from '../lib/progressColors';
 import {
   composeProjectName,
   getUniqueProjectNames,
   groupProjectsByCategory,
 } from '../lib/projectNames';
+import {
+  defaultTimelineFilter,
+  projectOverlapsTimeline,
+  resolveTimelineWindow,
+  type TimelineFilterState,
+} from '../lib/timelineFilter';
 import {
   buildTimelineWindow,
   defaultWeekAnchor,
@@ -105,12 +113,7 @@ function MemberPicker({
                 cursor: 'pointer', transition: 'all 0.12s ease',
               }}
             >
-              <span style={{
-                width: 20, height: 20, borderRadius: '50%',
-                background: m.avatarColor, color: 'var(--color-text-on-inverse)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, fontWeight: 700, flexShrink: 0,
-              }}>{m.initials}</span>
+              <Avatar initials={m.initials} color={m.avatarColor} src={m.avatarUrl} size={20} title={m.name} />
               {m.name}
             </button>
           );
@@ -647,26 +650,37 @@ export function ProjectMasterPage({
   const [search, setSearch]     = useState('');
   const [projectNameFilter, setProjectNameFilter] = useState<string>('all');
   const [progressFilter, setProgressFilter] = useState<ProgressFilter>('all');
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilterState>(defaultTimelineFilter);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft]       = useState<ProjectDraft>(emptyDraft());
 
   const filteredProjects = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return projects.filter((p) => {
-      const matchesSearch =
-        !query ||
-        p.projectName.toLowerCase().includes(query) ||
-        p.iterationLabel.toLowerCase().includes(query) ||
-        p.name.toLowerCase().includes(query) ||
-        p.pm.toLowerCase().includes(query);
-      const matchesProgress =
-        progressFilter === 'all' || p.progress === progressFilter;
-      const matchesProjectName =
-        projectNameFilter === 'all' || p.projectName === projectNameFilter;
-      return matchesSearch && matchesProgress && matchesProjectName;
-    });
-  }, [projects, search, progressFilter, projectNameFilter]);
+    const timelineWindow = resolveTimelineWindow(timelineFilter);
+    return projects
+      .filter((p) => {
+        const matchesSearch =
+          !query ||
+          p.projectName.toLowerCase().includes(query) ||
+          p.iterationLabel.toLowerCase().includes(query) ||
+          p.name.toLowerCase().includes(query) ||
+          p.pm.toLowerCase().includes(query);
+        const matchesProgress =
+          progressFilter === 'all' || p.progress === progressFilter;
+        const matchesProjectName =
+          projectNameFilter === 'all' || p.projectName === projectNameFilter;
+        const matchesTimeline = projectOverlapsTimeline(p, timelineWindow);
+        return matchesSearch && matchesProgress && matchesProjectName && matchesTimeline;
+      })
+      .sort((a, b) => {
+        const byProgress = progressSortRank(a.progress) - progressSortRank(b.progress);
+        if (byProgress !== 0) return byProgress;
+        const byName = (a.projectName || a.name).localeCompare(b.projectName || b.name);
+        if (byName !== 0) return byName;
+        return a.startDate.localeCompare(b.startDate);
+      });
+  }, [projects, search, progressFilter, projectNameFilter, timelineFilter]);
 
   function handleRoadmapScaleChange(next: RoadmapScale) {
     setRoadmapScale(next);
@@ -835,6 +849,11 @@ export function ProjectMasterPage({
               ))}
             </select>
           </div>
+          <TimelineFilter
+            value={timelineFilter}
+            onChange={setTimelineFilter}
+            projects={projects}
+          />
         </div>
       </div>
 

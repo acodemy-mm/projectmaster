@@ -1,4 +1,4 @@
-import type { Project } from '../data/mockData';
+import { progressSortRank, type Project } from '../data/mockData';
 
 export interface ProjectCategoryGroup {
   projectName: string;
@@ -38,6 +38,12 @@ export function normalizeProjectNames(
   return { projectName, iterationLabel, name };
 }
 
+function compareByProgressThenDate(a: Project, b: Project): number {
+  const byProgress = progressSortRank(a.progress) - progressSortRank(b.progress);
+  if (byProgress !== 0) return byProgress;
+  return a.startDate.localeCompare(b.startDate);
+}
+
 export function groupProjectsByCategory(projects: Project[]): ProjectCategoryGroup[] {
   const map = new Map<string, Project[]>();
   for (const p of projects) {
@@ -47,11 +53,16 @@ export function groupProjectsByCategory(projects: Project[]): ProjectCategoryGro
     else map.set(key, [p]);
   }
   return Array.from(map.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
     .map(([projectName, group]) => ({
       projectName,
-      projects: [...group].sort((a, b) => a.startDate.localeCompare(b.startDate)),
-    }));
+      projects: [...group].sort(compareByProgressThenDate),
+    }))
+    .sort((a, b) => {
+      const aRank = Math.min(...a.projects.map((p) => progressSortRank(p.progress)));
+      const bRank = Math.min(...b.projects.map((p) => progressSortRank(p.progress)));
+      if (aRank !== bRank) return aRank - bRank;
+      return a.projectName.localeCompare(b.projectName);
+    });
 }
 
 export function getUniqueProjectNames(projects: Project[]): string[] {

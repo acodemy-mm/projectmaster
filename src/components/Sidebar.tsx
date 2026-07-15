@@ -14,7 +14,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { id: 'overview',        label: 'Team Overview',          icon: <IconOverview   size={18} /> },
+  { id: 'overview',        label: 'Project Overview',       icon: <IconOverview   size={18} /> },
   { id: 'project-master',  label: 'Project Master',         icon: <IconBriefcase  size={18} /> },
   { id: 'team-setup',      label: 'Team Member Setup',      icon: <IconUsers      size={18} />, adminOnly: true },
 ];

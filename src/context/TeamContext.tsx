@@ -16,12 +16,13 @@ import { calculateMemberWorkRate } from '../lib/workRate';
 import { createUniqueId } from '../lib/ids';
 import { supabase } from '../lib/supabase';
 import { memberFromRow, memberToRow } from '../lib/supabaseMappers';
+import { removeMemberAvatar } from '../lib/memberAvatar';
 
 interface TeamContextValue {
   members: TeamMember[];
   loading: boolean;
   error: string | null;
-  addMember: (member: Omit<TeamMember, 'id' | 'initials' | 'workRate'>) => Promise<void>;
+  addMember: (member: Omit<TeamMember, 'id' | 'initials' | 'workRate'>) => Promise<TeamMember>;
   updateMember: (id: string, patch: Omit<Partial<TeamMember>, 'workRate'>) => Promise<void>;
   removeMember: (id: string) => Promise<void>;
   resetMembers: () => Promise<void>;
@@ -63,6 +64,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     async (member: Omit<TeamMember, 'id' | 'initials' | 'workRate'>) => {
       const newMember: TeamMember = {
         ...member,
+        avatarUrl: member.avatarUrl ?? '',
         id: createUniqueId(members.map((m) => m.id), 'm'),
         initials: deriveInitials(member.name),
         workRate: 0,
@@ -75,6 +77,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         throw insertErr;
       }
       setMembers((prev) => [...prev, newMember]);
+      return newMember;
     },
     [members]
   );
@@ -131,6 +134,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       setError(deleteErr.message);
       throw deleteErr;
     }
+    await removeMemberAvatar(id).catch(() => undefined);
     setMembers((prev) => prev.filter((m) => m.id !== id));
   }, []);
 

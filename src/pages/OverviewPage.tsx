@@ -1,12 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTeam } from '../context/TeamContext';
 import { useProjects } from '../context/ProjectContext';
 import { StatusBadge } from '../components/Badge';
 import { Avatar } from '../components/Avatar';
 import { ProjectTitle } from '../components/ProjectTitle';
 import { MetricTile } from '../components/MetricTile';
+import { TimelineFilter } from '../components/TimelineFilter';
 import { computePortfolioMetrics } from '../lib/portfolioMetrics';
+import {
+  defaultTimelineFilter,
+  filterProjectsByTimeline,
+  formatTimelineFilterLabel,
+  type TimelineFilterState,
+} from '../lib/timelineFilter';
 import { IconAlertTriangle } from '../icons';
+import { progressSortRank } from '../data/mockData';
 
 interface Props {
   onViewMember: (id: string) => void;
@@ -24,24 +32,50 @@ function WorkBar({ value }: { value: number }) {
 export function OverviewPage({ onViewMember, onViewProject }: Props) {
   const { members } = useTeam();
   const { projects } = useProjects();
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilterState>(defaultTimelineFilter);
 
-  const onTrackProjects = projects.filter((p) => p.progress === 'On Track' || p.progress === 'Launched');
-  const delayedProjects = projects.filter((p) => p.progress === 'Delayed');
+  const scopedProjects = useMemo(
+    () => filterProjectsByTimeline(projects, timelineFilter),
+    [projects, timelineFilter]
+  );
 
-  const metrics = useMemo(() => computePortfolioMetrics(projects), [projects]);
+  const onTrackProjects = scopedProjects.filter((p) => p.progress === 'On Track');
+  const delayedProjects = scopedProjects.filter((p) => p.progress === 'Delayed');
+  const deliveredProjects = scopedProjects.filter(
+    (p) => p.progress === 'Launched' || p.progress === 'Hands-off'
+  );
+
+  const metrics = useMemo(() => computePortfolioMetrics(scopedProjects), [scopedProjects]);
+
+  const healthProjects = useMemo(() => {
+    return [...scopedProjects].sort((a, b) => {
+      const byStatus = progressSortRank(a.progress) - progressSortRank(b.progress);
+      if (byStatus !== 0) return byStatus;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+  }, [scopedProjects]);
+
+  const timelineLabel = formatTimelineFilterLabel(timelineFilter);
 
   return (
     <div className="page page--wide">
-      <header className="page-header">
-        <h1 className="page-title">Portfolio Overview</h1>
-        <p className="page-subtitle">High-level view of team capacity and project health.</p>
+      <header className="page-header-row">
+        <div className="page-header" style={{ marginBottom: 0 }}>
+          <h1 className="page-title">Project Overview</h1>
+          <p className="page-subtitle">High-level view of team capacity and project health.</p>
+        </div>
+        <TimelineFilter
+          value={timelineFilter}
+          onChange={setTimelineFilter}
+          projects={projects}
+        />
       </header>
 
       <section style={{ marginBottom: 20 }}>
         <div className="section-header" style={{ marginBottom: 12 }}>
           <h2 className="section-title">Delivery Performance</h2>
           <span style={{ fontSize: 12, color: 'var(--mac-text-tertiary)' }}>
-            Synced from {metrics.slaSampleSize} active projects
+            {timelineLabel} · synced from {metrics.slaSampleSize} active projects
           </span>
         </div>
         <div className="metric-grid">
@@ -64,7 +98,7 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: 20 }}>
         <div className="stat-tile">
           <p className="stat-tile__label">Total Projects</p>
-          <p className="stat-tile__value">{projects.length}</p>
+          <p className="stat-tile__value">{scopedProjects.length}</p>
         </div>
         <div className="stat-tile">
           <p className="stat-tile__label">On Track</p>
@@ -73,6 +107,10 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
         <div className="stat-tile">
           <p className="stat-tile__label">Delayed</p>
           <p className="stat-tile__value" style={{ color: 'var(--mac-red)' }}>{delayedProjects.length}</p>
+        </div>
+        <div className="stat-tile">
+          <p className="stat-tile__label">Delivered Projects</p>
+          <p className="stat-tile__value stat-tile__value--green">{deliveredProjects.length}</p>
         </div>
         <div className="stat-tile">
           <p className="stat-tile__label">Team Size</p>
@@ -109,8 +147,8 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
               <p>No team members yet. Add members in Team Member Setup, then assign them in Project Master.</p>
             </div>
           ) : members.map((member) => {
-            const dedicatedCount = projects.filter((p) => p.dedicatedMemberIds.includes(member.id)).length;
-            const backupCount = projects.filter((p) => p.backupMemberIds.includes(member.id)).length;
+            const dedicatedCount = scopedProjects.filter((p) => p.dedicatedMemberIds.includes(member.id)).length;
+            const backupCount = scopedProjects.filter((p) => p.backupMemberIds.includes(member.id)).length;
             const available = 100 - member.workRate;
             const busy = member.status === 'Busy';
 
@@ -122,7 +160,7 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
                 onClick={() => onViewMember(member.id)}
               >
                 <div className="member-card__top">
-                  <Avatar initials={member.initials} color={member.avatarColor} size={44} title={member.name} />
+                  <Avatar initials={member.initials} color={member.avatarColor} src={member.avatarUrl} size={44} title={member.name} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p className="member-card__name">{member.name}</p>
                     <p className="member-card__role">{member.role}</p>
@@ -180,13 +218,19 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
       </section>
 
       <section style={{ marginTop: 24 }}>
-        <h2 className="section-title" style={{ marginBottom: 14 }}>Project Health Summary</h2>
-        <p style={{ fontSize: 12, color: 'var(--mac-text-tertiary)', marginBottom: 12 }}>
-          Click a project name to view full details
-        </p>
+        <div className="section-header" style={{ marginBottom: 12 }}>
+          <h2 className="section-title">Project Health Summary</h2>
+          <span style={{ fontSize: 12, color: 'var(--mac-text-tertiary)' }}>
+            {timelineLabel} · click a project for details
+          </span>
+        </div>
         {projects.length === 0 ? (
           <div className="overview-empty mac-group">
             <p>No projects yet. Add projects in Project Master to track delivery health.</p>
+          </div>
+        ) : scopedProjects.length === 0 ? (
+          <div className="overview-empty mac-group">
+            <p>No projects overlap this timeline. Try All time, another month, or a wider date range.</p>
           </div>
         ) : (
         <div className="mac-group">
@@ -202,7 +246,7 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((p) => (
+                {healthProjects.map((p) => (
                   <tr key={p.id}>
                     <td>
                       <ProjectTitle project={p} onClick={() => onViewProject(p.id)} showCategory />
@@ -210,7 +254,7 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         {p.dedicated.map((a) => (
-                          <Avatar key={a.name} initials={a.initials} color={a.avatarColor} size={22} title={a.name} />
+                          <Avatar key={a.name} initials={a.initials} color={a.avatarColor} src={a.avatarUrl} size={22} title={a.name} />
                         ))}
                         <span style={{ fontSize: 12, color: 'var(--mac-text-secondary)' }}>
                           {p.dedicated.map((a) => a.name).join(', ')}

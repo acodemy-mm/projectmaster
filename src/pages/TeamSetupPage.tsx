@@ -1,14 +1,15 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useTeam } from '../context/TeamContext';
 import { useProjects } from '../context/ProjectContext';
 import { useAuth } from '../auth/AuthContext';
 import {
-  MEMBER_ROLES, MEMBER_STATUSES, AVATAR_PALETTE,
+  MEMBER_ROLES, MEMBER_STATUSES, AVATAR_PALETTE, deriveInitials,
   type MemberRole, type MemberStatus, type TeamMember,
 } from '../data/mockData';
 import { Avatar } from '../components/Avatar';
 import { calculateMemberWorkRate } from '../lib/workRate';
 import { formatMembershipDuration, formatJoinDate } from '../lib/memberTenure';
+import { uploadMemberAvatar, removeMemberAvatar } from '../lib/memberAvatar';
 import { IconEdit, IconTrash, IconUsers } from '../icons';
 
 interface DraftMember {
@@ -17,6 +18,7 @@ interface DraftMember {
   status: MemberStatus;
   primaryFocus: string;
   avatarColor: string;
+  avatarUrl: string;
   joinDate: string;
 }
 
@@ -27,6 +29,7 @@ function emptyDraft(): DraftMember {
     status: 'Available',
     primaryFocus: '',
     avatarColor: AVATAR_PALETTE[0],
+    avatarUrl: '',
     joinDate: new Date().toISOString().slice(0, 10),
   };
 }
@@ -40,10 +43,37 @@ export function TeamSetupPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftMember>(emptyDraft());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [clearPhoto, setClearPhoto] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
+
+  function resetFormState() {
+    setShowForm(false);
+    setEditingId(null);
+    setDraft(emptyDraft());
+    setPendingFile(null);
+    setClearPhoto(false);
+    setFormError(null);
+  }
 
   function openCreate() {
     setEditingId(null);
     setDraft(emptyDraft());
+    setPendingFile(null);
+    setClearPhoto(false);
+    setFormError(null);
     setShowForm(true);
   }
 
@@ -55,25 +85,58 @@ export function TeamSetupPage() {
       status: m.status,
       primaryFocus: m.primaryFocus,
       avatarColor: m.avatarColor,
+      avatarUrl: m.avatarUrl,
       joinDate: m.joinDate,
     });
+    setPendingFile(null);
+    setClearPhoto(false);
+    setFormError(null);
     setShowForm(true);
   }
+
+  function onPhotoSelected(file: File | null) {
+    if (!file) return;
+    setPendingFile(file);
+    setClearPhoto(false);
+    setFormError(null);
+  }
+
+  function onRemovePhoto() {
+    setPendingFile(null);
+    setClearPhoto(true);
+    setDraft((d) => ({ ...d, avatarUrl: '' }));
+  }
+
+  const displayAvatarSrc = previewUrl ?? (clearPhoto ? '' : draft.avatarUrl);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!draft.name.trim()) return;
+    setSaving(true);
+    setFormError(null);
+    const { avatarUrl: _ignored, ...fields } = draft;
     try {
       if (editingId) {
-        await updateMember(editingId, draft);
+        let avatarUrl = clearPhoto ? '' : draft.avatarUrl;
+        if (clearPhoto) {
+          await removeMemberAvatar(editingId);
+        }
+        if (pendingFile) {
+          avatarUrl = await uploadMemberAvatar(editingId, pendingFile);
+        }
+        await updateMember(editingId, { ...fields, avatarUrl });
       } else {
-        await addMember(draft);
+        const created = await addMember({ ...fields, avatarUrl: '' });
+        if (pendingFile) {
+          const avatarUrl = await uploadMemberAvatar(created.id, pendingFile);
+          await updateMember(created.id, { avatarUrl });
+        }
       }
-      setShowForm(false);
-      setEditingId(null);
-      setDraft(emptyDraft());
-    } catch {
-      // error surfaced via TeamContext.error
+      resetFormState();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Could not save member.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -113,11 +176,52 @@ export function TeamSetupPage() {
         <section className="mac-group" style={{ marginBottom: 'var(--spacing-5)' }}>
           <div className="mac-group__header">
             <h2 className="mac-group__title">{editingId ? 'Edit Member' : 'New Member'}</h2>
-            <button type="button" className="mac-btn mac-btn--ghost" onClick={() => setShowForm(false)}>
+            <button type="button" className="mac-btn mac-btn--ghost" onClick={resetFormState}>
               Cancel
             </button>
           </div>
+          {formError && (
+            <div className="mac-alert" style={{ margin: '0 0 12px' }}>
+              <div>
+                <p className="mac-alert__title">Profile photo / save failed</p>
+                <p className="mac-alert__detail">{formError}</p>
+              </div>
+            </div>
+          )}
           <form className="team-form" onSubmit={handleSubmit}>
+            <div className="team-form__field team-form__field--wide team-form__photo">
+              <span>Profile photo</span>
+              <div className="team-form__photo-row">
+                <Avatar
+                  initials={draft.name.trim() ? deriveInitials(draft.name) : '??'}
+                  color={draft.avatarColor}
+                  src={displayAvatarSrc}
+                  size={56}
+                  title={draft.name || 'New member'}
+                />
+                <div className="team-form__photo-actions">
+                  <label className="mac-btn mac-btn--secondary team-form__photo-upload">
+                    {pendingFile || displayAvatarSrc ? 'Change photo' : 'Upload photo'}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        onPhotoSelected(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  {(pendingFile || displayAvatarSrc) && (
+                    <button type="button" className="mac-btn mac-btn--ghost" onClick={onRemovePhoto}>
+                      Remove
+                    </button>
+                  )}
+                  <p className="team-form__photo-hint">JPG, PNG, WEBP, or GIF · max 2 MB. Stored in Supabase.</p>
+                </div>
+              </div>
+            </div>
             <label className="team-form__field">
               Full name
               <input
@@ -189,8 +293,8 @@ export function TeamSetupPage() {
               </div>
             </div>
             <div className="team-form__actions">
-              <button type="submit" className="mac-btn mac-btn--primary">
-                {editingId ? 'Save changes' : 'Add member'}
+              <button type="submit" className="mac-btn mac-btn--primary" disabled={saving}>
+                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add member'}
               </button>
             </div>
           </form>
@@ -228,7 +332,7 @@ export function TeamSetupPage() {
                   <tr key={m.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
-                        <Avatar initials={m.initials} color={m.avatarColor} size={32} title={m.name} />
+                        <Avatar initials={m.initials} color={m.avatarColor} src={m.avatarUrl} size={32} title={m.name} />
                         <span className="mac-table__primary">{m.name}</span>
                       </div>
                     </td>

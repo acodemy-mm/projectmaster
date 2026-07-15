@@ -81,7 +81,7 @@ export function MemberDetailPage({ memberId, onBack }: Props) {
       </button>
 
       <header className="member-hero">
-        <Avatar initials={member.initials} color={member.avatarColor} size={64} title={member.name} />
+        <Avatar initials={member.initials} color={member.avatarColor} src={member.avatarUrl} size={64} title={member.name} />
         <div className="member-hero__info">
           <h1 className="page-title member-hero__name">{member.name}</h1>
           <p className="member-hero__role">{member.role}</p>

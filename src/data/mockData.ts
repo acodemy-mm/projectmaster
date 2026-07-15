@@ -9,6 +9,8 @@ export interface TeamMember {
   name: string;
   initials: string;
   avatarColor: string;
+  /** Public Supabase Storage URL for profile photo */
+  avatarUrl: string;
   role: MemberRole;
   status: MemberStatus;
   primaryFocus: string;
@@ -21,6 +23,7 @@ export interface Assignee {
   name: string;
   initials: string;
   avatarColor: string;
+  avatarUrl?: string;
 }
 
 export interface Project {
@@ -73,10 +76,10 @@ export const MEMBER_ROLES: MemberRole[] = [
 
 export const MEMBER_STATUSES: MemberStatus[] = ['Busy', 'Available'];
 
-/** Preset avatar colors — Virya Core hex values (from tokens.css) */
+/** Preset avatar colors — Virya Core hex values + purple accent */
 export const AVATAR_PALETTE = [
   '#002c76', '#1464eb', '#b51f26', '#0b7ad5',
-  '#008a00', '#d28107', '#e23c3c', '#666666',
+  '#008a00', '#d28107', '#e23c3c', '#6d28d9', '#666666',
 ];
 
 export function deriveInitials(name: string): string {
@@ -98,7 +101,12 @@ export function resolveAssignees(memberIds: string[], members: TeamMember[]): As
   return memberIds
     .map((id) => members.find((m) => m.id === id))
     .filter((m): m is TeamMember => !!m)
-    .map((m) => ({ name: m.name, initials: m.initials, avatarColor: m.avatarColor }));
+    .map((m) => ({
+      name: m.name,
+      initials: m.initials,
+      avatarColor: m.avatarColor,
+      avatarUrl: m.avatarUrl,
+    }));
 }
 
 export const PROJECT_SIZES: ProjectSize[]    = ['Small', 'Medium', 'Large'];
@@ -106,3 +114,18 @@ export const PROJECT_PHASES = ['Web', 'System', 'Internal', 'Mobile'];
 export const PROJECT_TYPES  = ['New Design', 'Additional', 'Internal', 'Research', 'Training', 'Redesign'];
 export const PRIORITY_LEVELS: PriorityLevel[] = ['Low', 'Medium', 'High', 'Critical'];
 export const PROGRESS_STATUSES: ProgressStatus[] = ['Planning', 'On Track', 'Hands-off', 'Paused', 'Delayed', 'Launched'];
+
+/** Display / list sort: active work first, Planning last */
+export const PROGRESS_SORT_ORDER: ProgressStatus[] = [
+  'On Track',
+  'Hands-off',
+  'Launched',
+  'Paused',
+  'Delayed',
+  'Planning',
+];
+
+export function progressSortRank(status: ProgressStatus): number {
+  const i = PROGRESS_SORT_ORDER.indexOf(status);
+  return i === -1 ? PROGRESS_SORT_ORDER.length : i;
+}

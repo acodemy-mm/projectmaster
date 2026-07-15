@@ -13,6 +13,7 @@ export interface MemberRow {
   name: string;
   initials: string;
   avatar_color: string;
+  avatar_url: string;
   role: string;
   status: string;
   primary_focus: string;
@@ -50,6 +51,7 @@ export function memberFromRow(row: MemberRow): TeamMember {
     name: row.name,
     initials: row.initials,
     avatarColor: row.avatar_color,
+    avatarUrl: row.avatar_url ?? '',
     role: row.role as MemberRole,
     status: row.status as MemberStatus,
     primaryFocus: row.primary_focus,
@@ -64,6 +66,7 @@ export function memberToRow(member: TeamMember): MemberRow {
     name: member.name,
     initials: member.initials,
     avatar_color: member.avatarColor,
+    avatar_url: member.avatarUrl ?? '',
     role: member.role,
     status: member.status,
     primary_focus: member.primaryFocus,
