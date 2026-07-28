@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, Fragment, type FormEvent } from 'react';
 import {
   PROJECT_SIZES, PROJECT_PHASES, PROJECT_TYPES, PRIORITY_LEVELS, PROGRESS_STATUSES,
-  progressSortRank,
-  type Project, type ProgressStatus, type PriorityLevel, type ProjectSize,
+  DESIGN_STAGES, progressSortRank, suggestDesignStage, formatDesignProcessDates, effectiveDesignStage,
+  type Project, type ProgressStatus, type PriorityLevel, type ProjectSize, type DesignStage,
 } from '../data/mockData';
 import { useProjects, dateToGanttStart, datesToGanttDuration } from '../context/ProjectContext';
 import { useTeam } from '../context/TeamContext';
 import { useAuth } from '../auth/AuthContext';
-import { StatusBadge, PriorityBadge, SizeBadge } from '../components/Badge';
+import { StatusBadge, PriorityBadge, SizeBadge, DesignStageBadge } from '../components/Badge';
 import { Avatar, AvatarGroup } from '../components/Avatar';
 import { ProjectTitle } from '../components/ProjectTitle';
 import { TimelineFilter } from '../components/TimelineFilter';
@@ -51,6 +51,11 @@ interface ProjectDraft {
   priority: PriorityLevel;
   complexity: PriorityLevel;
   progress: ProgressStatus;
+  designStage: DesignStage;
+  wireframeStart: string;
+  wireframeDelivered: string;
+  designStart: string;
+  handoffDate: string;
   pm: string;
   description: string;
   developerName: string;
@@ -73,6 +78,11 @@ function emptyDraft(): ProjectDraft {
     priority: 'Medium',
     complexity: 'Medium',
     progress: 'Planning',
+    designStage: 'Not Started',
+    wireframeStart: '',
+    wireframeDelivered: '',
+    designStart: '',
+    handoffDate: '',
     pm: '',
     description: '',
     developerName: '',
@@ -202,8 +212,33 @@ function ProjectForm({
         </label>
         <label className="team-form__field">
           Progress
-          <select value={draft.progress} onChange={(e) => setDraft({ ...draft, progress: e.target.value as ProgressStatus })}>
+          <select
+            value={draft.progress}
+            onChange={(e) => {
+              const progress = e.target.value as ProgressStatus;
+              setDraft({
+                ...draft,
+                progress,
+                designStage: suggestDesignStage({
+                  wireframeStart: draft.wireframeStart,
+                  wireframeDelivered: draft.wireframeDelivered,
+                  designStart: draft.designStart,
+                  handoffDate: draft.handoffDate,
+                  progress,
+                }),
+              });
+            }}
+          >
             {PROGRESS_STATUSES.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </label>
+        <label className="team-form__field">
+          Design stage
+          <select
+            value={draft.designStage}
+            onChange={(e) => setDraft({ ...draft, designStage: e.target.value as DesignStage })}
+          >
+            {DESIGN_STAGES.map((v) => <option key={v}>{v}</option>)}
           </select>
         </label>
         <label className="team-form__field">
@@ -215,6 +250,101 @@ function ProjectForm({
           Due date
           <input type="date" value={draft.dueDate}
             onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })} />
+        </label>
+        <div className="team-form__field team-form__field--wide">
+          <span>Design process dates</span>
+          <p style={{
+            margin: '0 0 var(--spacing-2)',
+            fontSize: 'var(--text-label2-size)',
+            fontWeight: 400,
+            color: 'var(--mac-text-tertiary)',
+          }}>
+            Wireframe / prototype first, then design timeline after review, then handoff.
+          </p>
+        </div>
+        <label className="team-form__field">
+          Wireframe start
+          <input
+            type="date"
+            value={draft.wireframeStart}
+            onChange={(e) => {
+              const wireframeStart = e.target.value;
+              setDraft({
+                ...draft,
+                wireframeStart,
+                designStage: suggestDesignStage({
+                  wireframeStart,
+                  wireframeDelivered: draft.wireframeDelivered,
+                  designStart: draft.designStart,
+                  handoffDate: draft.handoffDate,
+                  progress: draft.progress,
+                }),
+              });
+            }}
+          />
+        </label>
+        <label className="team-form__field">
+          Wireframe delivered
+          <input
+            type="date"
+            value={draft.wireframeDelivered}
+            onChange={(e) => {
+              const wireframeDelivered = e.target.value;
+              setDraft({
+                ...draft,
+                wireframeDelivered,
+                designStage: suggestDesignStage({
+                  wireframeStart: draft.wireframeStart,
+                  wireframeDelivered,
+                  designStart: draft.designStart,
+                  handoffDate: draft.handoffDate,
+                  progress: draft.progress,
+                }),
+              });
+            }}
+          />
+        </label>
+        <label className="team-form__field">
+          Design start
+          <input
+            type="date"
+            value={draft.designStart}
+            onChange={(e) => {
+              const designStart = e.target.value;
+              setDraft({
+                ...draft,
+                designStart,
+                designStage: suggestDesignStage({
+                  wireframeStart: draft.wireframeStart,
+                  wireframeDelivered: draft.wireframeDelivered,
+                  designStart,
+                  handoffDate: draft.handoffDate,
+                  progress: draft.progress,
+                }),
+              });
+            }}
+          />
+        </label>
+        <label className="team-form__field">
+          Handoff date
+          <input
+            type="date"
+            value={draft.handoffDate}
+            onChange={(e) => {
+              const handoffDate = e.target.value;
+              setDraft({
+                ...draft,
+                handoffDate,
+                designStage: suggestDesignStage({
+                  wireframeStart: draft.wireframeStart,
+                  wireframeDelivered: draft.wireframeDelivered,
+                  designStart: draft.designStart,
+                  handoffDate,
+                  progress: draft.progress,
+                }),
+              });
+            }}
+          />
         </label>
         <label className="team-form__field team-form__field--wide">
           Project Manager
@@ -293,14 +423,14 @@ function ProjectForm({
 
 /* ─── Table View ─────────────────────────────────────────────────────────── */
 const COLUMNS = [
-  { key: 'project',   label: 'Project',      width: '22%' },
-  { key: 'phase',     label: 'Phase / Type',  width: '11%' },
-  { key: 'plan',      label: 'Plan',          width: '10%' },
-  { key: 'assignees', label: 'Assignees',     width: '16%' },
-  { key: 'prio',      label: 'Prio / Comp',   width: '12%' },
-  { key: 'progress',  label: 'Progress',      width: '11%' },
-  { key: 'pm',        label: 'PM',            width: '12%' },
-  { key: 'actions',   label: '',              width: '6%'  },
+  { key: 'project',   label: 'Project',      width: '34%' },
+  { key: 'phase',     label: 'Phase / Type',  width: '9%' },
+  { key: 'plan',      label: 'Process',       width: '14%' },
+  { key: 'assignees', label: 'Assignees',     width: '14%' },
+  { key: 'prio',      label: 'Prio / Comp',   width: '10%' },
+  { key: 'progress',  label: 'Progress',      width: '9%' },
+  { key: 'pm',        label: 'PM',            width: '8%'  },
+  { key: 'actions',   label: '',              width: '2%'  },
 ];
 
 function TableView({
@@ -351,14 +481,22 @@ function TableView({
                 <p className="mac-table__secondary">{proj.type}</p>
               </td>
               <td>
-                <p className="mac-table__secondary">
-                  <span style={{ color: 'var(--mac-text-tertiary)' }}>S: </span>
-                  {proj.startDate.slice(5).replace('-', '/')}
-                </p>
-                <p className="mac-table__secondary">
-                  <span style={{ color: 'var(--mac-text-tertiary)' }}>D: </span>
-                  {proj.dueDate.slice(5).replace('-', '/')}
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <DesignStageBadge stage={effectiveDesignStage(proj)} />
+                  {formatDesignProcessDates(proj) ? (
+                    <p className="mac-table__secondary" style={{ fontSize: 'var(--text-label2-size)' }}>
+                      {formatDesignProcessDates(proj)}
+                    </p>
+                  ) : (
+                    <p className="mac-table__secondary">
+                      <span style={{ color: 'var(--mac-text-tertiary)' }}>S: </span>
+                      {proj.startDate.slice(5).replace('-', '/')}
+                      {' · '}
+                      <span style={{ color: 'var(--mac-text-tertiary)' }}>D: </span>
+                      {proj.dueDate.slice(5).replace('-', '/')}
+                    </p>
+                  )}
+                </div>
               </td>
               <td>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -537,7 +675,7 @@ function RoadmapView({
         <table className={`mac-table mac-table--roadmap mac-table--roadmap-${scale}`}>
           <thead>
             <tr>
-              <th style={{ width: '20%' }}>Project</th>
+              <th style={{ width: '60%' }}>Project</th>
               <th style={{ width: '9%' }}>Status</th>
               <th style={{ width: '9%' }}>Assignees</th>
               {timeline.columns.map((col) => (
@@ -650,6 +788,7 @@ export function ProjectMasterPage({
   const [search, setSearch]     = useState('');
   const [projectNameFilter, setProjectNameFilter] = useState<string>('all');
   const [progressFilter, setProgressFilter] = useState<ProgressFilter>('all');
+  const [stageFilter, setStageFilter] = useState<DesignStage | 'all'>('all');
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilterState>(defaultTimelineFilter);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -679,10 +818,12 @@ export function ProjectMasterPage({
           p.pm.toLowerCase().includes(query);
         const matchesProgress =
           progressFilter === 'all' || p.progress === progressFilter;
+        const matchesStage =
+          stageFilter === 'all' || effectiveDesignStage(p) === stageFilter;
         const matchesProjectName =
           projectNameFilter === 'all' || p.projectName === projectNameFilter;
         const matchesTimeline = projectOverlapsTimeline(p, timelineWindow);
-        return matchesSearch && matchesProgress && matchesProjectName && matchesTimeline;
+        return matchesSearch && matchesProgress && matchesStage && matchesProjectName && matchesTimeline;
       })
       .sort((a, b) => {
         const byProgress = progressSortRank(a.progress) - progressSortRank(b.progress);
@@ -691,7 +832,7 @@ export function ProjectMasterPage({
         if (byName !== 0) return byName;
         return a.startDate.localeCompare(b.startDate);
       });
-  }, [projects, search, progressFilter, projectNameFilter, timelineFilter]);
+  }, [projects, search, progressFilter, stageFilter, projectNameFilter, timelineFilter]);
 
   function handleRoadmapScaleChange(next: RoadmapScale) {
     setRoadmapScale(next);
@@ -721,7 +862,13 @@ export function ProjectMasterPage({
       startDate: p.startDate, dueDate: p.dueDate,
       dedicatedMemberIds: p.dedicatedMemberIds ?? [],
       backupMemberIds: p.backupMemberIds ?? [],
-      priority: p.priority, complexity: p.complexity, progress: p.progress, pm: p.pm ?? '',
+      priority: p.priority, complexity: p.complexity, progress: p.progress,
+      designStage: effectiveDesignStage(p),
+      wireframeStart: p.wireframeStart ?? '',
+      wireframeDelivered: p.wireframeDelivered ?? '',
+      designStart: p.designStart ?? '',
+      handoffDate: p.handoffDate ?? '',
+      pm: p.pm ?? '',
       description: p.description ?? '', developerName: p.developerName ?? '',
       wireframeLink: p.wireframeLink ?? '', figmaLink: p.figmaLink ?? '',
     });
@@ -753,6 +900,9 @@ export function ProjectMasterPage({
       name,
       ganttStart,
       ganttDuration,
+      designStage: draft.progress === 'Planning'
+        ? 'Not Started' as const
+        : draft.designStage,
     };
     try {
       if (editingId) {
@@ -857,6 +1007,19 @@ export function ProjectMasterPage({
               <option value="all">All progress</option>
               {PROGRESS_STATUSES.map((status) => (
                 <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+          <div className="toolbar-filter">
+            <select
+              className="toolbar-filter__select"
+              value={stageFilter}
+              onChange={(e) => setStageFilter(e.target.value as DesignStage | 'all')}
+              aria-label="Filter by design stage"
+            >
+              <option value="all">All stages</option>
+              {DESIGN_STAGES.map((stage) => (
+                <option key={stage} value={stage}>{stage}</option>
               ))}
             </select>
           </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTeam } from '../context/TeamContext';
 import { useProjects } from '../context/ProjectContext';
-import { StatusBadge } from '../components/Badge';
+import { StatusBadge, DesignStageBadge } from '../components/Badge';
 import { Avatar } from '../components/Avatar';
 import { ProjectTitle } from '../components/ProjectTitle';
 import { MetricTile } from '../components/MetricTile';
@@ -14,7 +14,35 @@ import {
   type TimelineFilterState,
 } from '../lib/timelineFilter';
 import { IconAlertTriangle } from '../icons';
-import { progressSortRank } from '../data/mockData';
+import { progressSortRank, effectiveDesignStage } from '../data/mockData';
+
+function nextMilestoneLabel(p: {
+  designStage: string;
+  wireframeDelivered: string;
+  designStart: string;
+  handoffDate: string;
+  dueDate: string;
+}): string {
+  if (p.designStage === 'Not Started' || !p.designStage) {
+    return p.dueDate.slice(5).replace('-', '/');
+  }
+  if (p.designStage === 'Wireframe' && p.wireframeDelivered) {
+    return `WF ${p.wireframeDelivered.slice(5).replace('-', '/')}`;
+  }
+  if (p.designStage === 'Review' && p.wireframeDelivered) {
+    return `Rev ${p.wireframeDelivered.slice(5).replace('-', '/')}`;
+  }
+  if (p.designStage === 'Design' && p.designStart) {
+    return `Des ${p.designStart.slice(5).replace('-', '/')}`;
+  }
+  if (p.designStage === 'Handoff' && p.handoffDate) {
+    return `HO ${p.handoffDate.slice(5).replace('-', '/')}`;
+  }
+  if (p.wireframeDelivered) {
+    return `WF ${p.wireframeDelivered.slice(5).replace('-', '/')}`;
+  }
+  return p.dueDate.slice(5).replace('-', '/');
+}
 
 interface Props {
   onViewMember: (id: string) => void;
@@ -39,11 +67,16 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
     [projects, timelineFilter]
   );
 
-  const onTrackProjects = scopedProjects.filter((p) => p.progress === 'On Track');
+  const onTrackProjects = scopedProjects.filter(
+    (p) => p.progress === 'On Track' || p.progress === 'Support'
+  );
   const delayedProjects = scopedProjects.filter((p) => p.progress === 'Delayed');
   const deliveredProjects = scopedProjects.filter(
     (p) => p.progress === 'Launched' || p.progress === 'Hands-off'
   );
+  const notStartedCount = scopedProjects.filter((p) => effectiveDesignStage(p) === 'Not Started').length;
+  const wireframeCount = scopedProjects.filter((p) => effectiveDesignStage(p) === 'Wireframe').length;
+  const designCount = scopedProjects.filter((p) => effectiveDesignStage(p) === 'Design').length;
 
   const metrics = useMemo(() => computePortfolioMetrics(scopedProjects), [scopedProjects]);
 
@@ -101,7 +134,7 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
           <p className="stat-tile__value">{scopedProjects.length}</p>
         </div>
         <div className="stat-tile">
-          <p className="stat-tile__label">On Track</p>
+          <p className="stat-tile__label">On Track / Support</p>
           <p className="stat-tile__value stat-tile__value--blue">{onTrackProjects.length}</p>
         </div>
         <div className="stat-tile">
@@ -121,6 +154,21 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
           <p className="stat-tile__value stat-tile__value--green">
             {members.filter((m) => m.status === 'Available').length}
           </p>
+        </div>
+      </div>
+
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: 20 }}>
+        <div className="stat-tile">
+          <p className="stat-tile__label">Not Started</p>
+          <p className="stat-tile__value">{notStartedCount}</p>
+        </div>
+        <div className="stat-tile">
+          <p className="stat-tile__label">In Wireframe</p>
+          <p className="stat-tile__value stat-tile__value--blue">{wireframeCount}</p>
+        </div>
+        <div className="stat-tile">
+          <p className="stat-tile__label">In Design</p>
+          <p className="stat-tile__value stat-tile__value--blue">{designCount}</p>
         </div>
       </div>
 
@@ -241,7 +289,8 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
                   <th>Project</th>
                   <th>Lead</th>
                   <th>Progress</th>
-                  <th>Due</th>
+                  <th>Stage</th>
+                  <th>Due / Milestone</th>
                   <th>Priority</th>
                 </tr>
               </thead>
@@ -262,7 +311,8 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
                       </div>
                     </td>
                     <td><StatusBadge status={p.progress} /></td>
-                    <td className="mac-table__secondary">{p.dueDate.slice(5).replace('-', '/')}</td>
+                    <td><DesignStageBadge stage={effectiveDesignStage(p)} /></td>
+                    <td className="mac-table__secondary">{nextMilestoneLabel(p)}</td>
                     <td>
                       <span style={{
                         fontSize: 11, fontWeight: 500, padding: '2px 7px', borderRadius: 99,

@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
 import {
+  DESIGN_PROCESS_STEPS,
+  effectiveDesignStage,
   GANTT_MONTHS,
+  type DesignStage,
   type Project,
 } from '../data/mockData';
 import { PROGRESS_GANTT_COLORS } from '../lib/progressColors';
 import { useProjects, dateToGanttStart, datesToGanttDuration } from '../context/ProjectContext';
-import { StatusBadge, PriorityBadge, SizeBadge } from '../components/Badge';
+import { StatusBadge, PriorityBadge, SizeBadge, DesignStageBadge } from '../components/Badge';
 import { AvatarGroup } from '../components/Avatar';
 import { IconEdit } from '../icons';
 
@@ -17,11 +20,62 @@ interface Props {
 }
 
 function formatDate(dateStr: string) {
+  if (!dateStr.trim()) return '—';
   return new Date(`${dateStr}T12:00:00`).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
+}
+
+function stageIndex(stage: DesignStage): number {
+  if (stage === 'Not Started') return -1;
+  const i = DESIGN_PROCESS_STEPS.indexOf(stage as (typeof DESIGN_PROCESS_STEPS)[number]);
+  return i === -1 ? 0 : i;
+}
+
+function DesignProcessStepper({ project }: { project: Project }) {
+  const stage = effectiveDesignStage(project);
+  const active = stageIndex(stage);
+  const dates: Record<(typeof DESIGN_PROCESS_STEPS)[number], string> = {
+    Wireframe: project.wireframeStart,
+    Review: project.wireframeDelivered,
+    Design: project.designStart,
+    Handoff: project.handoffDate,
+  };
+  const dateLabels: Record<(typeof DESIGN_PROCESS_STEPS)[number], string> = {
+    Wireframe: 'Start',
+    Review: 'Delivered',
+    Design: 'Start',
+    Handoff: 'Handoff',
+  };
+
+  return (
+    <div className="design-process">
+      <div className="design-process__header">
+        <DesignStageBadge stage={stage} />
+        <span className="design-process__hint">
+          {stage === 'Not Started'
+            ? 'Planning — design process not started yet'
+            : 'Wireframe → Review → Design → Handoff'}
+        </span>
+      </div>
+      <ol className="design-process__steps" aria-label="Design process stages">
+        {DESIGN_PROCESS_STEPS.map((step, i) => {
+          const state = i < active ? 'complete' : i === active ? 'active' : 'upcoming';
+          return (
+            <li key={step} className={`design-process__step design-process__step--${state}`}>
+              <span className="design-process__dot" aria-hidden />
+              <span className="design-process__step-label">{step}</span>
+              <span className="design-process__step-date">
+                {dateLabels[step]}: {formatDate(dates[step])}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
 }
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -120,6 +174,7 @@ export function ProjectDetailPage({ projectId, onBack, backLabel = 'Back to Proj
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 8 }}>
             <StatusBadge status={project.progress} />
+            <DesignStageBadge stage={effectiveDesignStage(project)} />
             <SizeBadge size={project.size} />
             <PriorityBadge level={project.priority} />
             <span className="project-detail__meta">{project.phase} · {project.type}</span>
@@ -136,6 +191,10 @@ export function ProjectDetailPage({ projectId, onBack, backLabel = 'Back to Proj
         <dl className="project-detail__grid">
           <DetailRow label="Progress Status">
             <StatusBadge status={project.progress} />
+          </DetailRow>
+
+          <DetailRow label="Design process">
+            <DesignProcessStepper project={project} />
           </DetailRow>
 
           <DetailRow label="Assign Person">

@@ -34,11 +34,11 @@ function slaEligible(projects: Project[]): Project[] {
   return projects.filter((p) => p.progress !== 'Planning');
 }
 
-/** Meets agreed delivery deadline: not flagged Delayed. */
+/** Meets agreed delivery deadline: not flagged Delayed. Support is ongoing (no finish SLA). */
 export function projectMeetsSla(p: Project, asOf: Date = new Date()): boolean {
   if (p.progress === 'Planning') return false;
   if (p.progress === 'Delayed') return false;
-  if (p.progress === 'Launched' || p.progress === 'Hands-off') return true;
+  if (p.progress === 'Launched' || p.progress === 'Hands-off' || p.progress === 'Support') return true;
   const due = parseDate(p.dueDate);
   return due.getTime() >= asOf.getTime();
 }

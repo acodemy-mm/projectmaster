@@ -6,7 +6,9 @@ import type {
   ProjectSize,
   PriorityLevel,
   ProgressStatus,
+  DesignStage,
 } from '../data/mockData';
+import { suggestDesignStage, DESIGN_STAGES } from '../data/mockData';
 
 export interface MemberRow {
   id: string;
@@ -36,6 +38,11 @@ export interface ProjectRow {
   priority: string;
   complexity: string;
   progress: string;
+  design_stage: string;
+  wireframe_start: string;
+  wireframe_delivered: string;
+  design_start: string;
+  handoff_date: string;
   pm: string;
   description: string;
   developer_name: string;
@@ -76,6 +83,24 @@ export function memberToRow(member: TeamMember): MemberRow {
 }
 
 export function projectFromRow(row: ProjectRow): Omit<Project, 'dedicated' | 'backup'> {
+  const wireframeStart = row.wireframe_start ?? '';
+  const wireframeDelivered = row.wireframe_delivered ?? '';
+  const designStart = row.design_start ?? '';
+  const handoffDate = row.handoff_date ?? '';
+  const designStage = suggestDesignStage({
+    wireframeStart,
+    wireframeDelivered,
+    designStart,
+    handoffDate,
+    progress: row.progress as ProgressStatus,
+  });
+  // Prefer stored stage unless Planning forces Not Started, or DB stage missing
+  const stored = row.design_stage as DesignStage | undefined;
+  const resolved: DesignStage =
+    (row.progress as ProgressStatus) === 'Planning'
+      ? 'Not Started'
+      : (stored && DESIGN_STAGES.includes(stored) ? stored : designStage);
+
   return {
     id: row.id,
     projectName: row.project_name,
@@ -91,6 +116,11 @@ export function projectFromRow(row: ProjectRow): Omit<Project, 'dedicated' | 'ba
     priority: row.priority as PriorityLevel,
     complexity: row.complexity as PriorityLevel,
     progress: row.progress as ProgressStatus,
+    designStage: resolved,
+    wireframeStart,
+    wireframeDelivered,
+    designStart,
+    handoffDate,
     pm: row.pm,
     description: row.description,
     developerName: row.developer_name,
@@ -119,6 +149,11 @@ export function projectToRow(
     priority: project.priority,
     complexity: project.complexity,
     progress: project.progress,
+    design_stage: project.designStage,
+    wireframe_start: project.wireframeStart ?? '',
+    wireframe_delivered: project.wireframeDelivered ?? '',
+    design_start: project.designStart ?? '',
+    handoff_date: project.handoffDate ?? '',
     pm: project.pm,
     description: project.description,
     developer_name: project.developerName,

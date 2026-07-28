@@ -1,4 +1,5 @@
-export type ProgressStatus = 'On Track' | 'Delayed' | 'Hands-off' | 'Launched' | 'Planning' | 'Paused';
+export type ProgressStatus = 'On Track' | 'Support' | 'Delayed' | 'Hands-off' | 'Launched' | 'Planning' | 'Paused';
+export type DesignStage = 'Not Started' | 'Wireframe' | 'Review' | 'Design' | 'Handoff';
 export type PriorityLevel  = 'Low' | 'Medium' | 'High' | 'Critical';
 export type ProjectSize     = 'Small' | 'Medium' | 'Large';
 export type MemberStatus    = 'Busy' | 'Available';
@@ -46,6 +47,16 @@ export interface Project {
   priority: PriorityLevel;
   complexity: PriorityLevel;
   progress: ProgressStatus;
+  /** Design-process stage (wireframe → review → design → handoff) */
+  designStage: DesignStage;
+  /** ISO date — initial prototype / wireframe kickoff */
+  wireframeStart: string;
+  /** ISO date — wireframe / prototype delivered for review */
+  wireframeDelivered: string;
+  /** ISO date — design timeline started after review */
+  designStart: string;
+  /** ISO date — handoff delivered / complete */
+  handoffDate: string;
   pm: string;
   description: string;
   developerName: string;
@@ -113,11 +124,84 @@ export const PROJECT_SIZES: ProjectSize[]    = ['Small', 'Medium', 'Large'];
 export const PROJECT_PHASES = ['Web', 'System', 'Internal', 'Mobile'];
 export const PROJECT_TYPES  = ['New Design', 'Additional', 'Internal', 'Research', 'Training', 'Redesign'];
 export const PRIORITY_LEVELS: PriorityLevel[] = ['Low', 'Medium', 'High', 'Critical'];
-export const PROGRESS_STATUSES: ProgressStatus[] = ['Planning', 'On Track', 'Hands-off', 'Paused', 'Delayed', 'Launched'];
+export const PROGRESS_STATUSES: ProgressStatus[] = [
+  'Planning',
+  'On Track',
+  'Support',
+  'Hands-off',
+  'Paused',
+  'Delayed',
+  'Launched',
+];
+
+export const DESIGN_STAGES: DesignStage[] = [
+  'Not Started',
+  'Wireframe',
+  'Review',
+  'Design',
+  'Handoff',
+];
+
+/** Process steps shown in the detail stepper (excludes Not Started). */
+export const DESIGN_PROCESS_STEPS: Exclude<DesignStage, 'Not Started'>[] = [
+  'Wireframe',
+  'Review',
+  'Design',
+  'Handoff',
+];
+
+/**
+ * Infer stage from Progress + milestone dates.
+ * Planning projects always surface as Not Started.
+ */
+export function suggestDesignStage(input: {
+  wireframeStart: string;
+  wireframeDelivered: string;
+  designStart: string;
+  handoffDate: string;
+  progress?: ProgressStatus;
+}): DesignStage {
+  if (input.progress === 'Planning') return 'Not Started';
+  if (input.handoffDate.trim()) return 'Handoff';
+  if (input.designStart.trim()) return 'Design';
+  if (input.wireframeDelivered.trim()) return 'Review';
+  return 'Wireframe';
+}
+
+/** Display stage: Planning progress forces Not Started. */
+export function effectiveDesignStage(project: {
+  progress: ProgressStatus;
+  designStage: DesignStage;
+}): DesignStage {
+  if (project.progress === 'Planning') return 'Not Started';
+  return project.designStage || 'Wireframe';
+}
+
+/** Compact secondary line for Master table (e.g. WF 03/01→03/12 · Des 03/20). */
+export function formatDesignProcessDates(project: {
+  wireframeStart: string;
+  wireframeDelivered: string;
+  designStart: string;
+  handoffDate: string;
+}): string {
+  const short = (d: string) => (d.trim() ? d.slice(5).replace('-', '/') : '');
+  const parts: string[] = [];
+  const wfS = short(project.wireframeStart);
+  const wfD = short(project.wireframeDelivered);
+  if (wfS || wfD) {
+    parts.push(wfS && wfD ? `WF ${wfS}→${wfD}` : wfS ? `WF ${wfS}` : `WF →${wfD}`);
+  }
+  const des = short(project.designStart);
+  if (des) parts.push(`Des ${des}`);
+  const ho = short(project.handoffDate);
+  if (ho) parts.push(`HO ${ho}`);
+  return parts.join(' · ');
+}
 
 /** Display / list sort: active work first, Planning last */
 export const PROGRESS_SORT_ORDER: ProgressStatus[] = [
   'On Track',
+  'Support',
   'Hands-off',
   'Launched',
   'Paused',
