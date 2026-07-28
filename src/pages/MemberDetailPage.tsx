@@ -1,14 +1,27 @@
 import { useMemo } from 'react';
 import { useTeam } from '../context/TeamContext';
 import { useProjects } from '../context/ProjectContext';
-import { StatusBadge, PriorityBadge, SizeBadge } from '../components/Badge';
+import { StatusBadge, PriorityBadge, SizeBadge, DesignStageBadge } from '../components/Badge';
 import { Avatar } from '../components/Avatar';
-import { composeProjectName } from '../lib/projectNames';
+import { ProjectTitle } from '../components/ProjectTitle';
 import { formatJoinDate, formatMembershipDuration } from '../lib/memberTenure';
+import {
+  effectiveDesignStage,
+  progressSortRank,
+  type Project,
+} from '../data/mockData';
 
 interface Props {
   memberId: string;
   onBack: () => void;
+  onViewProject?: (id: string) => void;
+}
+
+type AssignmentRole = 'Lead' | 'Backup';
+
+interface AssignedProject {
+  project: Project;
+  role: AssignmentRole;
 }
 
 function WorkRateArc({ value }: { value: number }) {
@@ -55,10 +68,11 @@ function StatTile({
   );
 }
 
-export function MemberDetailPage({ memberId, onBack }: Props) {
+export function MemberDetailPage({ memberId, onBack, onViewProject }: Props) {
   const { members } = useTeam();
   const { projects } = useProjects();
   const member = members.find((m) => m.id === memberId);
+
   const dedicatedProjects = useMemo(
     () => projects.filter((p) => p.dedicatedMemberIds.includes(memberId)),
     [projects, memberId]
@@ -67,6 +81,22 @@ export function MemberDetailPage({ memberId, onBack }: Props) {
     () => projects.filter((p) => p.backupMemberIds.includes(memberId)),
     [projects, memberId]
   );
+
+  const assignedProjects = useMemo((): AssignedProject[] => {
+    const rows: AssignedProject[] = [
+      ...dedicatedProjects.map((project) => ({ project, role: 'Lead' as const })),
+      ...backupProjects.map((project) => ({ project, role: 'Backup' as const })),
+    ];
+    return rows.sort((a, b) => {
+      const byProgress =
+        progressSortRank(a.project.progress) - progressSortRank(b.project.progress);
+      if (byProgress !== 0) return byProgress;
+      if (a.role !== b.role) return a.role === 'Lead' ? -1 : 1;
+      return (a.project.projectName || a.project.name).localeCompare(
+        b.project.projectName || b.project.name
+      );
+    });
+  }, [dedicatedProjects, backupProjects]);
 
   if (!member) {
     return <div className="page"><p>Member not found.</p></div>;
@@ -101,6 +131,7 @@ export function MemberDetailPage({ memberId, onBack }: Props) {
       <div className="member-stat-row">
         <StatTile label="Join date" value={formatJoinDate(member.joinDate)} sub="team start date" />
         <StatTile label="Duration" value={formatMembershipDuration(member.joinDate)} sub="time on team" />
+        <StatTile label="Assigned" value={assignedProjects.length} sub="all projects" />
         <StatTile label="Dedicated" value={dedicatedProjects.length} sub="as lead designer" />
         <StatTile label="Backup" value={backupProjects.length} sub="as support" />
         <StatTile
@@ -140,76 +171,66 @@ export function MemberDetailPage({ memberId, onBack }: Props) {
         )}
       </section>
 
-      <div className="member-projects-stack">
-        <section className="mac-group">
-          <div className="mac-group__header">
-            <h2 className="mac-group__title">Dedicated Lead ({dedicatedProjects.length})</h2>
-          </div>
-          {dedicatedProjects.length === 0 ? (
-            <p className="member-projects-empty">No dedicated projects.</p>
-          ) : (
-            <div className="mac-table-wrap">
-              <table className="mac-table">
-                <thead>
-                  <tr>
-                    <th>Project</th>
-                    <th>Progress</th>
-                    <th>Due</th>
+      <section className="mac-group">
+        <div className="mac-group__header">
+          <h2 className="mac-group__title">
+            All Assigned Projects ({assignedProjects.length})
+          </h2>
+        </div>
+        {assignedProjects.length === 0 ? (
+          <p className="member-projects-empty">
+            No projects assigned yet. Assign this member as Lead or Backup in Project Master.
+          </p>
+        ) : (
+          <div className="mac-table-wrap">
+            <table className="mac-table">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Role</th>
+                  <th>Progress</th>
+                  <th>Stage</th>
+                  <th>Due</th>
+                  <th>Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignedProjects.map(({ project: p, role }) => (
+                  <tr key={`${p.id}-${role}`}>
+                    <td>
+                      {onViewProject ? (
+                        <ProjectTitle
+                          project={p}
+                          onClick={() => onViewProject(p.id)}
+                          showCategory
+                        />
+                      ) : (
+                        <p className="mac-table__primary">{p.name}</p>
+                      )}
+                      <SizeBadge size={p.size} />
+                    </td>
+                    <td>
+                      <span
+                        className="mac-badge"
+                        style={{
+                          background: role === 'Lead' ? 'var(--tint-primary-bg)' : 'var(--tint-neutral-bg)',
+                          color: role === 'Lead' ? 'var(--tint-primary-fg)' : 'var(--tint-neutral-fg)',
+                        }}
+                      >
+                        {role}
+                      </span>
+                    </td>
+                    <td><StatusBadge status={p.progress} /></td>
+                    <td><DesignStageBadge stage={effectiveDesignStage(p)} /></td>
+                    <td className="mac-table__secondary">{p.dueDate.slice(5).replace('-', '/')}</td>
+                    <td><PriorityBadge level={p.priority} /></td>
                   </tr>
-                </thead>
-                <tbody>
-                  {dedicatedProjects.map((p) => (
-                    <tr key={p.id}>
-                      <td>
-                        <p className="mac-table__primary">
-                          {composeProjectName(p.projectName, p.iterationLabel) || p.name}
-                        </p>
-                        <SizeBadge size={p.size} />
-                      </td>
-                      <td><StatusBadge status={p.progress} /></td>
-                      <td className="mac-table__secondary">{p.dueDate.slice(5).replace('-', '/')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className="mac-group">
-          <div className="mac-group__header">
-            <h2 className="mac-group__title">Backup Support ({backupProjects.length})</h2>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {backupProjects.length === 0 ? (
-            <p className="member-projects-empty">No backup projects.</p>
-          ) : (
-            <div className="mac-table-wrap">
-              <table className="mac-table">
-                <thead>
-                  <tr>
-                    <th>Project</th>
-                    <th>Progress</th>
-                    <th>Priority</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {backupProjects.map((p) => (
-                    <tr key={p.id}>
-                      <td>
-                        <p className="mac-table__primary">
-                          {composeProjectName(p.projectName, p.iterationLabel) || p.name}
-                        </p>
-                      </td>
-                      <td><StatusBadge status={p.progress} /></td>
-                      <td><PriorityBadge level={p.priority} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
+        )}
+      </section>
     </div>
   );
 }

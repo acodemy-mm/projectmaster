@@ -15,7 +15,8 @@ function PortalApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
   const [viewingProjectId, setViewingProjectId] = useState<string | null>(null);
-  const [projectDetailSource, setProjectDetailSource] = useState<'overview' | 'project-master'>('project-master');
+  const [projectDetailSource, setProjectDetailSource] = useState<'overview' | 'project-master' | 'member'>('project-master');
+  const [memberReturnId, setMemberReturnId] = useState<string | null>(null);
   const [editProjectId, setEditProjectId] = useState<string | null>(null);
   const { session } = useAuth();
   const isSuperAdmin = session?.role === 'super_admin';
@@ -23,13 +24,19 @@ function PortalApp() {
   const handleViewMember = (id: string) => {
     setViewingMemberId(id);
     setViewingProjectId(null);
+    setMemberReturnId(null);
     setSidebarOpen(false);
   };
 
-  const handleViewProject = (id: string, source: 'overview' | 'project-master' = 'project-master') => {
+  const handleViewProject = (
+    id: string,
+    source: 'overview' | 'project-master' | 'member' = 'project-master',
+    fromMemberId?: string
+  ) => {
     setViewingProjectId(id);
     setViewingMemberId(null);
     setProjectDetailSource(source);
+    setMemberReturnId(source === 'member' ? (fromMemberId ?? null) : null);
     setSidebarOpen(false);
   };
 
@@ -51,11 +58,22 @@ function PortalApp() {
 
   const renderPage = () => {
     if (viewingProjectId) {
+      const backLabel =
+        projectDetailSource === 'overview'
+          ? 'Back to Project Overview'
+          : projectDetailSource === 'member'
+            ? 'Back to Member'
+            : 'Back to Project Master';
       return (
         <ProjectDetailPage
           projectId={viewingProjectId}
-          onBack={() => setViewingProjectId(null)}
-          backLabel={projectDetailSource === 'overview' ? 'Back to Project Overview' : 'Back to Project Master'}
+          onBack={() => {
+            setViewingProjectId(null);
+            if (projectDetailSource === 'member' && memberReturnId) {
+              setViewingMemberId(memberReturnId);
+            }
+          }}
+          backLabel={backLabel}
           onEditProject={isSuperAdmin ? () => handleEditProject(viewingProjectId) : undefined}
         />
       );
@@ -65,6 +83,7 @@ function PortalApp() {
         <MemberDetailPage
           memberId={viewingMemberId}
           onBack={() => setViewingMemberId(null)}
+          onViewProject={(id) => handleViewProject(id, 'member', viewingMemberId)}
         />
       );
     }
