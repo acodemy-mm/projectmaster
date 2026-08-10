@@ -14,7 +14,15 @@ import {
   type TimelineFilterState,
 } from '../lib/timelineFilter';
 import { IconAlertTriangle } from '../icons';
-import { progressSortRank, effectiveDesignStage } from '../data/mockData';
+import {
+  progressSortRank,
+  effectiveDesignStage,
+  DESIGN_STAGES,
+  type Project,
+  type PriorityLevel,
+} from '../data/mockData';
+
+const TEAM_SECTION_KEY = 'pap_overview_team_collapsed';
 
 function nextMilestoneLabel(p: {
   designStage: string;
@@ -47,7 +55,39 @@ function nextMilestoneLabel(p: {
 interface Props {
   onViewMember: (id: string) => void;
   onViewProject: (id: string) => void;
+  onViewAllProjects: () => void;
 }
+
+type HealthSortKey = 'project' | 'progress' | 'stage' | 'due' | 'priority';
+
+const PRIORITY_RANK: Record<PriorityLevel, number> = {
+  Critical: 0,
+  High: 1,
+  Medium: 2,
+  Low: 3,
+};
+
+function stageRank(p: Project): number {
+  const i = DESIGN_STAGES.indexOf(effectiveDesignStage(p));
+  return i === -1 ? DESIGN_STAGES.length : i;
+}
+
+function compareProjects(a: Project, b: Project, key: HealthSortKey): number {
+  switch (key) {
+    case 'project':
+      return a.name.localeCompare(b.name);
+    case 'progress':
+      return progressSortRank(a.progress) - progressSortRank(b.progress);
+    case 'stage':
+      return stageRank(a) - stageRank(b);
+    case 'due':
+      return a.dueDate.localeCompare(b.dueDate);
+    case 'priority':
+      return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+  }
+}
+
+const HEALTH_PREVIEW_COUNT = 10;
 
 function WorkBar({ value }: { value: number }) {
   return (
@@ -57,10 +97,14 @@ function WorkBar({ value }: { value: number }) {
   );
 }
 
-export function OverviewPage({ onViewMember, onViewProject }: Props) {
+export function OverviewPage({ onViewMember, onViewProject, onViewAllProjects }: Props) {
   const { members } = useTeam();
   const { projects } = useProjects();
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilterState>(defaultTimelineFilter);
+  const [healthSort, setHealthSort] = useState<HealthSortKey>('progress');
+  const [teamCollapsed, setTeamCollapsed] = useState<boolean>(
+    () => localStorage.getItem(TEAM_SECTION_KEY) === '1'
+  );
 
   const scopedProjects = useMemo(
     () => filterProjectsByTimeline(projects, timelineFilter),
@@ -71,6 +115,8 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
     (p) => p.progress === 'On Track' || p.progress === 'Support'
   );
   const delayedProjects = scopedProjects.filter((p) => p.progress === 'Delayed');
+  const pausedProjects = scopedProjects.filter((p) => p.progress === 'Paused');
+  const planningProjects = scopedProjects.filter((p) => p.progress === 'Planning');
   const deliveredProjects = scopedProjects.filter(
     (p) => p.progress === 'Launched' || p.progress === 'Hands-off'
   );
@@ -81,14 +127,25 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
   const metrics = useMemo(() => computePortfolioMetrics(scopedProjects), [scopedProjects]);
 
   const healthProjects = useMemo(() => {
-    return [...scopedProjects].sort((a, b) => {
-      const byStatus = progressSortRank(a.progress) - progressSortRank(b.progress);
-      if (byStatus !== 0) return byStatus;
-      return a.dueDate.localeCompare(b.dueDate);
-    });
-  }, [scopedProjects]);
+    return [...scopedProjects].sort((a, b) => compareProjects(a, b, healthSort));
+  }, [scopedProjects, healthSort]);
+
+  const previewProjects = healthProjects.slice(0, HEALTH_PREVIEW_COUNT);
 
   const timelineLabel = formatTimelineFilterLabel(timelineFilter);
+
+  function toggleTeamSection() {
+    setTeamCollapsed((prev) => {
+      localStorage.setItem(TEAM_SECTION_KEY, prev ? '0' : '1');
+      return !prev;
+    });
+  }
+
+  const attentionGroups: { label: string; projects: Project[]; tone: 'critical' | 'warning' | 'neutral' }[] = [
+    { label: 'Delayed', projects: delayedProjects, tone: 'critical' },
+    { label: 'Paused', projects: pausedProjects, tone: 'warning' },
+    { label: 'Planning', projects: planningProjects, tone: 'neutral' },
+  ];
 
   return (
     <div className="page page--wide">
@@ -128,7 +185,7 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
         </div>
       </section>
 
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: 20 }}>
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: 12 }}>
         <div className="stat-tile">
           <p className="stat-tile__label">Total Projects</p>
           <p className="stat-tile__value">{scopedProjects.length}</p>
@@ -157,38 +214,63 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
         </div>
       </div>
 
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginBottom: 20 }}>
-        <div className="stat-tile">
-          <p className="stat-tile__label">Not Started</p>
-          <p className="stat-tile__value">{notStartedCount}</p>
-        </div>
-        <div className="stat-tile">
-          <p className="stat-tile__label">In Wireframe</p>
-          <p className="stat-tile__value stat-tile__value--blue">{wireframeCount}</p>
-        </div>
-        <div className="stat-tile">
-          <p className="stat-tile__label">In Design</p>
-          <p className="stat-tile__value stat-tile__value--blue">{designCount}</p>
-        </div>
-      </div>
+      <p className="pipeline-summary">
+        <span className="pipeline-summary__label">Pipeline</span>
+        {notStartedCount} Not Started · {wireframeCount} Wireframe · {designCount} Design
+      </p>
 
-      {delayedProjects.length > 0 && (
-        <div className="mac-alert" style={{ marginBottom: 20 }}>
-          <IconAlertTriangle size={18} color="var(--mac-red)" />
-          <div>
-            <p className="mac-alert__title">Immediate Attention Required</p>
-            <p className="mac-alert__count">{delayedProjects.length} <span style={{ fontSize: 15, fontWeight: 600 }}>Delayed</span></p>
-            <p className="mac-alert__detail">{delayedProjects.map((p) => p.name).join(' · ')}</p>
+      {(delayedProjects.length > 0 || pausedProjects.length > 0 || planningProjects.length > 0) && (
+        <div className="attention-strip" style={{ marginBottom: 20 }}>
+          <div className="attention-strip__header">
+            <IconAlertTriangle size={16} color="var(--mac-red)" />
+            <span className="attention-strip__title">Needs attention</span>
+          </div>
+          <div className="attention-strip__groups">
+            {attentionGroups.map((g) => g.projects.length > 0 && (
+              <div key={g.label} className={`attention-group attention-group--${g.tone}`}>
+                <span className="attention-group__count">{g.projects.length}</span>
+                <span className="attention-group__label">{g.label}</span>
+                <span className="attention-group__names">
+                  {g.projects.map((p, i) => (
+                    <span key={p.id}>
+                      {i > 0 && ' · '}
+                      <button
+                        type="button"
+                        className="attention-group__link"
+                        onClick={() => onViewProject(p.id)}
+                      >
+                        {p.name}
+                      </button>
+                    </span>
+                  ))}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       <section>
-        <div className="section-header">
+        <button
+          type="button"
+          className="section-toggle"
+          onClick={toggleTeamSection}
+          aria-expanded={!teamCollapsed}
+        >
           <h2 className="section-title">Team Members</h2>
-          <span style={{ fontSize: 12, color: 'var(--mac-text-tertiary)' }}>Click a member to view full profile</span>
-        </div>
+          <span className="section-toggle__meta">
+            {members.length} members · {members.filter((m) => m.status === 'Available').length} available
+          </span>
+          <svg
+            className={`section-toggle__chevron${teamCollapsed ? ' section-toggle__chevron--collapsed' : ''}`}
+            width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
 
+        {!teamCollapsed && (
         <div className="member-card-grid">
           {members.length === 0 ? (
             <div className="overview-empty">
@@ -263,6 +345,7 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
             );
           })}
         </div>
+        )}
       </section>
 
       <section style={{ marginTop: 24 }}>
@@ -283,19 +366,36 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
         ) : (
         <div className="mac-group">
           <div className="mac-table-wrap">
-            <table className="mac-table">
+            <table className="mac-table mac-table--compact">
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Lead</th>
-                  <th>Progress</th>
-                  <th>Stage</th>
-                  <th>Due / Milestone</th>
-                  <th>Priority</th>
+                  {([
+                    { key: 'project' as HealthSortKey, label: 'Project' },
+                    { key: null, label: 'Lead' },
+                    { key: 'progress' as HealthSortKey, label: 'Progress' },
+                    { key: 'stage' as HealthSortKey, label: 'Stage' },
+                    { key: 'due' as HealthSortKey, label: 'Due / Milestone' },
+                    { key: 'priority' as HealthSortKey, label: 'Priority' },
+                  ]).map((col) => (
+                    <th key={col.label}>
+                      {col.key ? (
+                        <button
+                          type="button"
+                          className={`mac-table__sort${healthSort === col.key ? ' mac-table__sort--active' : ''}`}
+                          onClick={() => setHealthSort(col.key as HealthSortKey)}
+                        >
+                          {col.label}
+                          {healthSort === col.key && (
+                            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+                          )}
+                        </button>
+                      ) : col.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {healthProjects.map((p) => (
+                {previewProjects.map((p) => (
                   <tr key={p.id}>
                     <td>
                       <ProjectTitle project={p} onClick={() => onViewProject(p.id)} showCategory />
@@ -327,6 +427,16 @@ export function OverviewPage({ onViewMember, onViewProject }: Props) {
               </tbody>
             </table>
           </div>
+          {healthProjects.length > HEALTH_PREVIEW_COUNT && (
+            <div className="mac-table-footer">
+              <span style={{ fontSize: 12, color: 'var(--mac-text-tertiary)' }}>
+                Showing {HEALTH_PREVIEW_COUNT} of {healthProjects.length}
+              </span>
+              <button type="button" className="mac-btn mac-btn--ghost" onClick={onViewAllProjects}>
+                View all {healthProjects.length} in Project Master →
+              </button>
+            </div>
+          )}
         </div>
         )}
       </section>

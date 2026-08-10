@@ -49,6 +49,7 @@ function hydrateProject(
     wireframeDelivered: raw.wireframeDelivered ?? '',
     designStart: raw.designStart ?? '',
     handoffDate: raw.handoffDate ?? '',
+    planTasks: raw.planTasks ?? [],
     dedicatedMemberIds: raw.dedicatedMemberIds ?? [],
     backupMemberIds: raw.backupMemberIds ?? [],
     dedicated: resolveAssignees(raw.dedicatedMemberIds ?? [], members),

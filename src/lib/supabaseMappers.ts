@@ -1,6 +1,7 @@
 import type {
   TeamMember,
   Project,
+  PlanTask,
   MemberRole,
   MemberStatus,
   ProjectSize,
@@ -8,7 +9,7 @@ import type {
   ProgressStatus,
   DesignStage,
 } from '../data/mockData';
-import { suggestDesignStage, DESIGN_STAGES } from '../data/mockData';
+import { suggestDesignStage, DESIGN_STAGES, PROGRESS_STATUSES } from '../data/mockData';
 
 export interface MemberRow {
   id: string;
@@ -50,6 +51,25 @@ export interface ProjectRow {
   figma_link: string;
   gantt_start: number;
   gantt_duration: number;
+  plan_tasks: unknown;
+}
+
+/** Tolerant JSONB → PlanTask[] (handles missing column / bad rows). */
+function planTasksFromJson(value: unknown): PlanTask[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((t): t is Record<string, unknown> => typeof t === 'object' && t !== null)
+    .map((t) => ({
+      id: typeof t.id === 'string' && t.id ? t.id : `task-${Math.random().toString(36).slice(2, 10)}`,
+      name: typeof t.name === 'string' ? t.name : '',
+      weight: typeof t.weight === 'number' && Number.isFinite(t.weight) ? t.weight : 0,
+      startDate: typeof t.startDate === 'string' ? t.startDate : '',
+      endDate: typeof t.endDate === 'string' ? t.endDate : '',
+      status:
+        typeof t.status === 'string' && (PROGRESS_STATUSES as string[]).includes(t.status)
+          ? (t.status as ProgressStatus)
+          : 'Planning',
+    }));
 }
 
 export function memberFromRow(row: MemberRow): TeamMember {
@@ -128,6 +148,7 @@ export function projectFromRow(row: ProjectRow): Omit<Project, 'dedicated' | 'ba
     figmaLink: row.figma_link,
     ganttStart: row.gantt_start,
     ganttDuration: row.gantt_duration,
+    planTasks: planTasksFromJson(row.plan_tasks),
   };
 }
 
@@ -161,5 +182,6 @@ export function projectToRow(
     figma_link: project.figmaLink,
     gantt_start: project.ganttStart,
     gantt_duration: project.ganttDuration,
+    plan_tasks: project.planTasks ?? [],
   };
 }

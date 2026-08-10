@@ -27,6 +27,19 @@ export interface Assignee {
   avatarUrl?: string;
 }
 
+/** Plan-log task under a Project epic. Weights are planning-only. */
+export interface PlanTask {
+  id: string;
+  name: string;
+  /** Planning weight % (e.g. 10, 35) — visibility only, not a progress driver */
+  weight: number;
+  /** ISO date */
+  startDate: string;
+  /** ISO date */
+  endDate: string;
+  status: ProgressStatus;
+}
+
 export interface Project {
   id: string;
   /** Stable product/initiative category — engagements can return under the same name */
@@ -64,6 +77,8 @@ export interface Project {
   figmaLink: string;
   ganttStart: number;
   ganttDuration: number;
+  /** Plan-log tasks attached to this epic (JSONB-backed) */
+  planTasks: PlanTask[];
 }
 
 export const GANTT_MONTHS = [
@@ -122,7 +137,16 @@ export function resolveAssignees(memberIds: string[], members: TeamMember[]): As
 
 export const PROJECT_SIZES: ProjectSize[]    = ['Small', 'Medium', 'Large'];
 export const PROJECT_PHASES = ['Web', 'System', 'Internal', 'Mobile'];
-export const PROJECT_TYPES  = ['New Design', 'Additional', 'Internal', 'Research', 'Training', 'Redesign'];
+export const PROJECT_TYPES  = [
+  'New Design',
+  'Redesign',
+  'Additional',
+  'Research',
+  'Training',
+  'Learning',
+  'Project Operation',
+  'Internal',
+];
 export const PRIORITY_LEVELS: PriorityLevel[] = ['Low', 'Medium', 'High', 'Critical'];
 export const PROGRESS_STATUSES: ProgressStatus[] = [
   'Planning',
@@ -212,4 +236,9 @@ export const PROGRESS_SORT_ORDER: ProgressStatus[] = [
 export function progressSortRank(status: ProgressStatus): number {
   const i = PROGRESS_SORT_ORDER.indexOf(status);
   return i === -1 ? PROGRESS_SORT_ORDER.length : i;
+}
+
+/** Sum of plan-task weights (planning-only; not tied to progress). */
+export function sumPlanWeights(tasks: PlanTask[]): number {
+  return tasks.reduce((sum, t) => sum + (Number.isFinite(t.weight) ? t.weight : 0), 0);
 }

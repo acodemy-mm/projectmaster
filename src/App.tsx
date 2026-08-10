@@ -56,6 +56,8 @@ function PortalApp() {
     setEditProjectId(null);
   };
 
+  const goToProjectMaster = () => handleNavigate('project-master');
+
   const renderPage = () => {
     if (viewingProjectId) {
       const backLabel =
@@ -88,7 +90,7 @@ function PortalApp() {
       );
     }
     switch (currentPage) {
-      case 'overview':        return <OverviewPage onViewMember={handleViewMember} onViewProject={(id) => handleViewProject(id, 'overview')} />;
+      case 'overview':        return <OverviewPage onViewMember={handleViewMember} onViewProject={(id) => handleViewProject(id, 'overview')} onViewAllProjects={goToProjectMaster} />;
       case 'project-master':  return (
         <ProjectMasterPage
           onViewProject={(id) => handleViewProject(id, 'project-master')}
@@ -97,7 +99,7 @@ function PortalApp() {
         />
       );
       case 'team-setup':      return <TeamSetupPage />;
-      default:                return <OverviewPage onViewMember={handleViewMember} onViewProject={(id) => handleViewProject(id, 'overview')} />;
+      default:                return <OverviewPage onViewMember={handleViewMember} onViewProject={(id) => handleViewProject(id, 'overview')} onViewAllProjects={goToProjectMaster} />;
     }
   };
 

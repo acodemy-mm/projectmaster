@@ -2,9 +2,11 @@ import { useState, useEffect, useMemo, Fragment, type FormEvent } from 'react';
 import {
   PROJECT_SIZES, PROJECT_PHASES, PROJECT_TYPES, PRIORITY_LEVELS, PROGRESS_STATUSES,
   DESIGN_STAGES, progressSortRank, suggestDesignStage, formatDesignProcessDates, effectiveDesignStage,
-  type Project, type ProgressStatus, type PriorityLevel, type ProjectSize, type DesignStage,
+  sumPlanWeights,
+  type Project, type PlanTask, type ProgressStatus, type PriorityLevel, type ProjectSize, type DesignStage,
 } from '../data/mockData';
 import { useProjects, dateToGanttStart, datesToGanttDuration } from '../context/ProjectContext';
+import { createUniqueId } from '../lib/ids';
 import { useTeam } from '../context/TeamContext';
 import { useAuth } from '../auth/AuthContext';
 import { StatusBadge, PriorityBadge, SizeBadge, DesignStageBadge } from '../components/Badge';
@@ -61,6 +63,7 @@ interface ProjectDraft {
   developerName: string;
   wireframeLink: string;
   figmaLink: string;
+  planTasks: PlanTask[];
 }
 
 function emptyDraft(): ProjectDraft {
@@ -88,6 +91,7 @@ function emptyDraft(): ProjectDraft {
     developerName: '',
     wireframeLink: '',
     figmaLink: '',
+    planTasks: [],
   };
 }
 
@@ -138,6 +142,104 @@ function MemberPicker({
   );
 }
 
+/* ─── Plan-log task editor ───────────────────────────────────────────────── */
+function PlanTaskEditor({
+  tasks, onChange,
+}: { tasks: PlanTask[]; onChange: (tasks: PlanTask[]) => void }) {
+  const total = sumPlanWeights(tasks);
+
+  function patchTask(id: string, patch: Partial<PlanTask>) {
+    onChange(tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }
+
+  function addTask() {
+    onChange([
+      ...tasks,
+      {
+        id: createUniqueId(tasks.map((t) => t.id), 'task'),
+        name: '',
+        weight: 0,
+        startDate: '',
+        endDate: '',
+        status: 'Planning',
+      },
+    ]);
+  }
+
+  return (
+    <div className="team-form__field team-form__field--wide">
+      <div className="plan-log">
+        <div className="plan-log__head">
+          <span className="plan-log__col plan-log__col--name">Task</span>
+          <span className="plan-log__col plan-log__col--weight">Weight %</span>
+          <span className="plan-log__col">Start</span>
+          <span className="plan-log__col">End</span>
+          <span className="plan-log__col">Status</span>
+          <span className="plan-log__col plan-log__col--actions" aria-hidden="true" />
+        </div>
+        {tasks.length === 0 && (
+          <p className="plan-log__empty">
+            No plan tasks yet. Add the weighted steps you track (e.g. Discussion 10%, Wireframe 20%).
+          </p>
+        )}
+        {tasks.map((t) => (
+          <div key={t.id} className="plan-log__row">
+            <input
+              className="plan-log__col plan-log__col--name"
+              value={t.name}
+              onChange={(e) => patchTask(t.id, { name: e.target.value })}
+              placeholder="e.g. Discussion with PM/BA"
+            />
+            <input
+              className="plan-log__col plan-log__col--weight"
+              type="number"
+              min={0}
+              max={100}
+              value={t.weight}
+              onChange={(e) => patchTask(t.id, { weight: Number(e.target.value) || 0 })}
+            />
+            <input
+              className="plan-log__col"
+              type="date"
+              value={t.startDate}
+              onChange={(e) => patchTask(t.id, { startDate: e.target.value })}
+            />
+            <input
+              className="plan-log__col"
+              type="date"
+              value={t.endDate}
+              onChange={(e) => patchTask(t.id, { endDate: e.target.value })}
+            />
+            <select
+              className="plan-log__col"
+              value={t.status}
+              onChange={(e) => patchTask(t.id, { status: e.target.value as ProgressStatus })}
+            >
+              {PROGRESS_STATUSES.map((v) => <option key={v}>{v}</option>)}
+            </select>
+            <button
+              type="button"
+              className="mac-btn mac-btn--icon plan-log__remove"
+              title="Remove task"
+              onClick={() => onChange(tasks.filter((x) => x.id !== t.id))}
+            >
+              <IconTrash size={13} />
+            </button>
+          </div>
+        ))}
+        <div className="plan-log__footer">
+          <button type="button" className="mac-btn mac-btn--secondary" onClick={addTask}>
+            <IconPlus size={13} /> Add task
+          </button>
+          <span className={`plan-log__total${tasks.length > 0 && total !== 100 ? ' plan-log__total--warn' : ''}`}>
+            Total weight: {total}%{tasks.length > 0 && total !== 100 ? ' — weights usually total 100%' : ''}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Project form ───────────────────────────────────────────────────────── */
 function ProjectForm({
   title, draft, setDraft, onSubmit, onCancel, existingProjectNames,
@@ -156,7 +258,11 @@ function ProjectForm({
         <button type="button" className="mac-btn mac-btn--ghost" onClick={onCancel}>Cancel</button>
       </div>
       <form className="team-form" onSubmit={onSubmit} noValidate>
-        {/* Row 1 */}
+        {/* 1. Project plan */}
+        <div className="team-form__section">
+          <h3 className="team-form__section-title">Project plan</h3>
+          <p className="team-form__section-desc">Name, summary, timeline, and current status.</p>
+        </div>
         <label className="team-form__field team-form__field--wide">
           Project name
           <input
@@ -180,38 +286,27 @@ function ProjectForm({
             placeholder="e.g. Pay Advance, Phase 2 (optional for first engagement)"
           />
         </label>
-        <label className="team-form__field">
-          Phase
-          <select value={draft.phase} onChange={(e) => setDraft({ ...draft, phase: e.target.value })}>
-            {PROJECT_PHASES.map((v) => <option key={v}>{v}</option>)}
-          </select>
+        <label className="team-form__field team-form__field--wide">
+          Description
+          <textarea
+            value={draft.description}
+            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+            placeholder="Brief project overview and scope"
+            rows={3}
+          />
         </label>
         <label className="team-form__field">
-          Type
-          <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
-            {PROJECT_TYPES.map((v) => <option key={v}>{v}</option>)}
-          </select>
+          Start date
+          <input type="date" value={draft.startDate}
+            onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} />
         </label>
         <label className="team-form__field">
-          Size
-          <select value={draft.size} onChange={(e) => setDraft({ ...draft, size: e.target.value as ProjectSize })}>
-            {PROJECT_SIZES.map((v) => <option key={v}>{v}</option>)}
-          </select>
+          Due date
+          <input type="date" value={draft.dueDate}
+            onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })} />
         </label>
-        <label className="team-form__field">
-          Priority
-          <select value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value as PriorityLevel })}>
-            {PRIORITY_LEVELS.map((v) => <option key={v}>{v}</option>)}
-          </select>
-        </label>
-        <label className="team-form__field">
-          Complexity
-          <select value={draft.complexity} onChange={(e) => setDraft({ ...draft, complexity: e.target.value as PriorityLevel })}>
-            {PRIORITY_LEVELS.map((v) => <option key={v}>{v}</option>)}
-          </select>
-        </label>
-        <label className="team-form__field">
-          Progress
+        <label className="team-form__field team-form__field--wide">
+          Status
           <select
             value={draft.progress}
             onChange={(e) => {
@@ -232,6 +327,62 @@ function ProjectForm({
             {PROGRESS_STATUSES.map((v) => <option key={v}>{v}</option>)}
           </select>
         </label>
+
+        {/* 2. Plan log */}
+        <div className="team-form__section">
+          <h3 className="team-form__section-title">Plan log</h3>
+          <p className="team-form__section-desc">
+            Weighted plan tasks attached to this epic — weights are for planning visibility only.
+          </p>
+        </div>
+        <PlanTaskEditor
+          tasks={draft.planTasks}
+          onChange={(planTasks) => setDraft({ ...draft, planTasks })}
+        />
+
+        {/* 3. Classification */}
+        <div className="team-form__section">
+          <h3 className="team-form__section-title">Classification</h3>
+          <p className="team-form__section-desc">What kind of engagement, platform, and effort level.</p>
+        </div>
+        <label className="team-form__field">
+          Project type
+          <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
+            {PROJECT_TYPES.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </label>
+        <label className="team-form__field">
+          Platform
+          <select value={draft.phase} onChange={(e) => setDraft({ ...draft, phase: e.target.value })}>
+            {PROJECT_PHASES.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </label>
+        <label className="team-form__field">
+          Size
+          <select value={draft.size} onChange={(e) => setDraft({ ...draft, size: e.target.value as ProjectSize })}>
+            {PROJECT_SIZES.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </label>
+        <label className="team-form__field">
+          Priority
+          <select value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value as PriorityLevel })}>
+            {PRIORITY_LEVELS.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </label>
+        <label className="team-form__field">
+          Complexity
+          <select value={draft.complexity} onChange={(e) => setDraft({ ...draft, complexity: e.target.value as PriorityLevel })}>
+            {PRIORITY_LEVELS.map((v) => <option key={v}>{v}</option>)}
+          </select>
+        </label>
+
+        {/* 4. Design process */}
+        <div className="team-form__section">
+          <h3 className="team-form__section-title">Design process</h3>
+          <p className="team-form__section-desc">
+            Wireframe / prototype first, then design timeline after review, then handoff. Stage auto-suggests from dates.
+          </p>
+        </div>
         <label className="team-form__field">
           Design stage
           <select
@@ -241,27 +392,7 @@ function ProjectForm({
             {DESIGN_STAGES.map((v) => <option key={v}>{v}</option>)}
           </select>
         </label>
-        <label className="team-form__field">
-          Start date
-          <input type="date" value={draft.startDate}
-            onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} />
-        </label>
-        <label className="team-form__field">
-          Due date
-          <input type="date" value={draft.dueDate}
-            onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })} />
-        </label>
-        <div className="team-form__field team-form__field--wide">
-          <span>Design process dates</span>
-          <p style={{
-            margin: '0 0 var(--spacing-2)',
-            fontSize: 'var(--text-label2-size)',
-            fontWeight: 400,
-            color: 'var(--mac-text-tertiary)',
-          }}>
-            Wireframe / prototype first, then design timeline after review, then handoff.
-          </p>
-        </div>
+        <div className="team-form__field" aria-hidden="true" />
         <label className="team-form__field">
           Wireframe start
           <input
@@ -346,44 +477,31 @@ function ProjectForm({
             }}
           />
         </label>
-        <label className="team-form__field team-form__field--wide">
+
+        {/* 5. People & links */}
+        <div className="team-form__section">
+          <h3 className="team-form__section-title">People & links</h3>
+          <p className="team-form__section-desc">Owner, developer, and design references.</p>
+        </div>
+        <label className="team-form__field">
           Project Manager
           <input value={draft.pm}
             onChange={(e) => setDraft({ ...draft, pm: e.target.value })}
             placeholder="e.g. Ko Sai Phone Wann" />
         </label>
-        <label className="team-form__field team-form__field--wide">
+        <label className="team-form__field">
           Developer name
           <input value={draft.developerName}
             onChange={(e) => setDraft({ ...draft, developerName: e.target.value })}
             placeholder="e.g. Ko Aung Myint" />
         </label>
-        <label className="team-form__field team-form__field--wide">
-          Description
-          <textarea
-            value={draft.description}
-            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-            placeholder="Brief project overview and scope"
-            rows={3}
-            style={{
-              padding: '9px 12px',
-              border: '1px solid var(--mac-border)',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--mac-bg-card)',
-              fontFamily: 'var(--font-family)',
-              fontSize: 'var(--text-body1-size)',
-              color: 'var(--mac-text-primary)',
-              resize: 'vertical',
-            }}
-          />
-        </label>
-        <label className="team-form__field team-form__field--wide">
+        <label className="team-form__field">
           Wireframe link
           <input type="text" value={draft.wireframeLink}
             onChange={(e) => setDraft({ ...draft, wireframeLink: e.target.value })}
             placeholder="https://www.figma.com/file/..." />
         </label>
-        <label className="team-form__field team-form__field--wide">
+        <label className="team-form__field">
           Figma link
           <input type="text" value={draft.figmaLink}
             onChange={(e) => setDraft({ ...draft, figmaLink: e.target.value })}
@@ -871,6 +989,7 @@ export function ProjectMasterPage({
       pm: p.pm ?? '',
       description: p.description ?? '', developerName: p.developerName ?? '',
       wireframeLink: p.wireframeLink ?? '', figmaLink: p.figmaLink ?? '',
+      planTasks: p.planTasks ?? [],
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });

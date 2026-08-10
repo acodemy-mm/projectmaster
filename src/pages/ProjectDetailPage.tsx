@@ -78,6 +78,38 @@ function DesignProcessStepper({ project }: { project: Project }) {
   );
 }
 
+function PlanLogTable({ project }: { project: Project }) {
+  const tasks = project.planTasks ?? [];
+  if (tasks.length === 0) return null;
+  const total = tasks.reduce((sum, t) => sum + (Number.isFinite(t.weight) ? t.weight : 0), 0);
+
+  return (
+    <div className="plan-log plan-log--readonly">
+      <div className="plan-log__head">
+        <span className="plan-log__col plan-log__col--name">Task</span>
+        <span className="plan-log__col plan-log__col--dates">Date</span>
+        <span className="plan-log__col plan-log__col--status">Status</span>
+      </div>
+      {tasks.map((t) => (
+        <div key={t.id} className="plan-log__row plan-log__row--readonly">
+          <span className="plan-log__col plan-log__col--name">
+            {t.name || '—'} <span className="plan-log__weight">({t.weight}%)</span>
+          </span>
+          <span className="plan-log__col plan-log__col--dates">
+            {t.startDate || t.endDate
+              ? `${formatDate(t.startDate)} → ${formatDate(t.endDate)}`
+              : '—'}
+          </span>
+          <span className="plan-log__col plan-log__col--status">
+            <StatusBadge status={t.status} />
+          </span>
+        </div>
+      ))}
+      <p className="plan-log__total">Total weight: {total}%</p>
+    </div>
+  );
+}
+
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="project-detail__row">
@@ -196,6 +228,12 @@ export function ProjectDetailPage({ projectId, onBack, backLabel = 'Back to Proj
           <DetailRow label="Design process">
             <DesignProcessStepper project={project} />
           </DetailRow>
+
+          {(project.planTasks ?? []).length > 0 && (
+            <DetailRow label="Plan log">
+              <PlanLogTable project={project} />
+            </DetailRow>
+          )}
 
           <DetailRow label="Assign Person">
             {project.dedicated.length === 0 && project.backup.length === 0 ? (
