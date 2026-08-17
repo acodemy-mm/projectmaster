@@ -1,4 +1,5 @@
 export type ProgressStatus = 'On Track' | 'Support' | 'Delayed' | 'Hands-off' | 'Launched' | 'Planning' | 'Paused';
+export type PlanTaskStatus = 'Plan' | 'In Progress' | 'Done' | 'Delayed' | 'Postpone';
 export type DesignStage = 'Not Started' | 'Wireframe' | 'Review' | 'Design' | 'Handoff';
 export type PriorityLevel  = 'Low' | 'Medium' | 'High' | 'Critical';
 export type ProjectSize     = 'Small' | 'Medium' | 'Large';
@@ -37,7 +38,7 @@ export interface PlanTask {
   startDate: string;
   /** ISO date */
   endDate: string;
-  status: ProgressStatus;
+  status: PlanTaskStatus;
 }
 
 export interface Project {
@@ -157,6 +158,35 @@ export const PROGRESS_STATUSES: ProgressStatus[] = [
   'Delayed',
   'Launched',
 ];
+
+export const PLAN_TASK_STATUSES: PlanTaskStatus[] = [
+  'Plan',
+  'In Progress',
+  'Done',
+  'Delayed',
+  'Postpone',
+];
+
+/** Map stored / legacy plan-task status strings onto the current set. */
+export function normalizePlanTaskStatus(value: unknown): PlanTaskStatus {
+  if (typeof value !== 'string') return 'Plan';
+  const key = value.trim().toLowerCase().replace(/[\s_-]+/g, '');
+  const mapped: Record<string, PlanTaskStatus> = {
+    plan: 'Plan',
+    planning: 'Plan',
+    inprogress: 'In Progress',
+    ontrack: 'In Progress',
+    support: 'In Progress',
+    done: 'Done',
+    handsoff: 'Done',
+    launched: 'Done',
+    delayed: 'Delayed',
+    postpone: 'Postpone',
+    postponed: 'Postpone',
+    paused: 'Postpone',
+  };
+  return mapped[key] ?? 'Plan';
+}
 
 export const DESIGN_STAGES: DesignStage[] = [
   'Not Started',

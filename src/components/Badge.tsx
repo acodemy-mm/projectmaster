@@ -1,5 +1,5 @@
 import type {
-  ProgressStatus, PriorityLevel, ProjectSize, MemberStatus, DesignStage,
+  ProgressStatus, PlanTaskStatus, PriorityLevel, ProjectSize, MemberStatus, DesignStage,
 } from '../data/mockData';
 
 const PROGRESS_STYLES: Record<ProgressStatus, { bg: string; color: string }> = {
@@ -14,6 +14,23 @@ const PROGRESS_STYLES: Record<ProgressStatus, { bg: string; color: string }> = {
 
 export function StatusBadge({ status }: { status: ProgressStatus }) {
   const s = PROGRESS_STYLES[status];
+  return (
+    <span className="mac-badge" style={{ background: s.bg, color: s.color }}>
+      {status}
+    </span>
+  );
+}
+
+const PLAN_TASK_STYLES: Record<PlanTaskStatus, { bg: string; color: string }> = {
+  Plan:           { bg: 'var(--tint-info-bg)',     color: 'var(--tint-info-fg)' },
+  'In Progress':  { bg: 'var(--tint-primary-bg)',  color: 'var(--tint-primary-fg)' },
+  Done:           { bg: 'var(--tint-success-bg)',  color: 'var(--tint-success-fg)' },
+  Delayed:        { bg: 'var(--tint-critical-bg)', color: 'var(--tint-critical-fg)' },
+  Postpone:       { bg: 'var(--tint-warning-bg)',  color: 'var(--tint-warning-fg)' },
+};
+
+export function PlanTaskStatusBadge({ status }: { status: PlanTaskStatus }) {
+  const s = PLAN_TASK_STYLES[status] ?? PLAN_TASK_STYLES.Plan;
   return (
     <span className="mac-badge" style={{ background: s.bg, color: s.color }}>
       {status}

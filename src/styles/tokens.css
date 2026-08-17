@@ -9,42 +9,42 @@
 
 :root {
   /* ============ CORE — Primitive ramps ============ */
-  /* Primary (brand navy / interactive blue) */
-  --v-primary-50:  #fafcff;
-  --v-primary-100: #f0f5ff;
-  --v-primary-200: #e1ecfe;
-  --v-primary-300: #92bafb;
-  --v-primary-400: #1464eb;   /* interactive accent */
-  --v-primary-500: #002c76;   /* brand base navy */
-  --v-primary-600: #012460;
-  --v-primary-700: #011b47;
-  --v-primary-800: #03122b;
-  --v-primary-900: #010913;
+  /* Primary — deep navy + sky blue, tuned to the reference theme */
+  --v-primary-50:  #f4f8ff;
+  --v-primary-100: #eaf2ff;
+  --v-primary-200: #dbe9ff;
+  --v-primary-300: #8fc4f8;
+  --v-primary-400: #4da3e8;   /* interactive sky accent */
+  --v-primary-500: #0d2a5b;   /* brand base navy */
+  --v-primary-600: #0a2149;
+  --v-primary-700: #071a3a;
+  --v-primary-800: #041226;
+  --v-primary-900: #020814;
 
   /* Secondary (maroon) */
   --v-secondary-400: #c94a50;
   --v-secondary-500: #b51f26;
   --v-secondary-600: #911218;
 
-  /* Neutral */
-  --v-neutral-50:  #fdfdfd;
-  --v-neutral-100: #fafafa;
-  --v-neutral-200: #f5f5f5;
-  --v-neutral-300: #e6e6e6;
-  --v-neutral-400: #d6d6d6;
-  --v-neutral-500: #b0b0b0;
-  --v-neutral-600: #949494;
-  --v-neutral-700: #666666;
-  --v-neutral-800: #424242;
-  --v-neutral-900: #1a1a1a;
+  /* Neutral — soft blue-gray */
+  --v-neutral-50:  #fbfcfe;
+  --v-neutral-100: #f6f8fb;
+  --v-neutral-200: #eef2f7;
+  --v-neutral-300: #dde4ee;
+  --v-neutral-400: #cbd5e1;
+  --v-neutral-500: #9aa8bd;
+  --v-neutral-600: #71829a;
+  --v-neutral-700: #5b6b82;
+  --v-neutral-800: #37465c;
+  --v-neutral-900: #1c2a3d;
 
   /* Success */
-  --v-success-100: #e8fde8;
-  --v-success-200: #b6f7b6;
-  --v-success-300: #88e788;
-  --v-success-400: #0ab80a;
-  --v-success-500: #008a00;
-  --v-success-600: #016f01;
+  --v-success-100: #e9f9ef;
+  --v-success-200: #c8f0d4;
+  --v-success-300: #8fe0ab;
+  --v-success-400: #3fbe6f;
+  --v-success-500: #149a4f;
+  --v-success-600: #0e7a3f;
 
   /* Warning */
   --v-warning-100: #fef7eb;

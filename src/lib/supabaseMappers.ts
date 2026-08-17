@@ -9,7 +9,7 @@ import type {
   ProgressStatus,
   DesignStage,
 } from '../data/mockData';
-import { suggestDesignStage, DESIGN_STAGES, PROGRESS_STATUSES } from '../data/mockData';
+import { suggestDesignStage, DESIGN_STAGES, normalizePlanTaskStatus } from '../data/mockData';
 
 export interface MemberRow {
   id: string;
@@ -65,10 +65,7 @@ function planTasksFromJson(value: unknown): PlanTask[] {
       weight: typeof t.weight === 'number' && Number.isFinite(t.weight) ? t.weight : 0,
       startDate: typeof t.startDate === 'string' ? t.startDate : '',
       endDate: typeof t.endDate === 'string' ? t.endDate : '',
-      status:
-        typeof t.status === 'string' && (PROGRESS_STATUSES as string[]).includes(t.status)
-          ? (t.status as ProgressStatus)
-          : 'Planning',
+      status: normalizePlanTaskStatus(t.status),
     }));
 }
 

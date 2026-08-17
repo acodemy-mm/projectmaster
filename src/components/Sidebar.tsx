@@ -45,14 +45,14 @@ export function Sidebar({ currentPage, onNavigate, isOpen, onClose }: SidebarPro
         {/* Logo / app name */}
         <div className="mac-sidebar__logo">
           <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: 'rgba(255, 255, 255, 0.14)',
+            width: 32, height: 32, borderRadius: 10,
+            background: 'rgba(255, 255, 255, 0.16)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <rect x={2} y={3} width={20} height={14} rx={2} />
-              <polyline points="8 21 12 17 16 21" />
+              <rect x={3} y={4} width={18} height={13} rx={2} />
+              <path d="M9 21h6" />
             </svg>
           </div>
           <div>

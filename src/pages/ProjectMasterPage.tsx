@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, Fragment, type FormEvent } from 'react';
 import {
   PROJECT_SIZES, PROJECT_PHASES, PROJECT_TYPES, PRIORITY_LEVELS, PROGRESS_STATUSES,
-  DESIGN_STAGES, progressSortRank, suggestDesignStage, formatDesignProcessDates, effectiveDesignStage,
+  PLAN_TASK_STATUSES, DESIGN_STAGES, progressSortRank, suggestDesignStage, formatDesignProcessDates, effectiveDesignStage,
   sumPlanWeights,
-  type Project, type PlanTask, type ProgressStatus, type PriorityLevel, type ProjectSize, type DesignStage,
+  type Project, type PlanTask, type PlanTaskStatus, type ProgressStatus, type PriorityLevel, type ProjectSize, type DesignStage,
 } from '../data/mockData';
 import { useProjects, dateToGanttStart, datesToGanttDuration } from '../context/ProjectContext';
 import { createUniqueId } from '../lib/ids';
@@ -161,7 +161,7 @@ function PlanTaskEditor({
         weight: 0,
         startDate: '',
         endDate: '',
-        status: 'Planning',
+        status: 'Plan',
       },
     ]);
   }
@@ -213,9 +213,9 @@ function PlanTaskEditor({
             <select
               className="plan-log__col"
               value={t.status}
-              onChange={(e) => patchTask(t.id, { status: e.target.value as ProgressStatus })}
+              onChange={(e) => patchTask(t.id, { status: e.target.value as PlanTaskStatus })}
             >
-              {PROGRESS_STATUSES.map((v) => <option key={v}>{v}</option>)}
+              {PLAN_TASK_STATUSES.map((v) => <option key={v}>{v}</option>)}
             </select>
             <button
               type="button"

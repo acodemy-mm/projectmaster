@@ -51,7 +51,7 @@
   font-size: 26px;
   line-height: 32px;
   font-weight: 700;
-  color: var(--v-primary-600);
+  color: var(--mac-text-primary);
   letter-spacing: -0.03em;
   margin-bottom: 4px;
 }
@@ -110,7 +110,7 @@
   flex-shrink: 0;
 }
 
-/* ── Sidebar (macOS Settings / Finder style) ── */
+/* ── Sidebar (reference navy) ── */
 .mac-sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
@@ -161,9 +161,9 @@
   gap: 12px;
   padding: 10px 14px;
   border: none;
-  border-radius: var(--mac-radius-md);
+  border-radius: var(--radius-full);
   background: transparent;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.78);
   font-family: var(--font-family);
   font-size: var(--text-body1-size);
   font-weight: 500;
@@ -178,9 +178,10 @@
 }
 
 .mac-sidebar__item--active {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.16);
   color: var(--color-text-on-inverse);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--v-primary-300);
 }
 
 .mac-sidebar__item--active .mac-sidebar__icon {
@@ -228,7 +229,7 @@
   gap: 6px;
   padding: 8px 16px;
   min-height: 36px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   font-family: var(--font-family);
   font-size: var(--text-body2-size);
   font-weight: 600;
@@ -240,6 +241,7 @@
 .mac-btn--primary {
   background: var(--mac-accent);
   color: var(--color-text-on-inverse);
+  border-radius: var(--radius-full);
 }
 
 .mac-btn--primary:hover {
@@ -327,7 +329,7 @@
   padding: 7px 12px;
   background: var(--mac-bg-card);
   border: 0.5px solid var(--mac-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   min-width: 200px;
   max-width: 280px;
   flex: 1;
@@ -372,7 +374,7 @@
   min-width: 160px;
   padding: 0 12px;
   border: 0.5px solid var(--mac-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   background: var(--mac-bg-card);
   font-family: var(--font-family);
   font-size: var(--text-body1-size);
@@ -432,7 +434,7 @@
 /* ── Grouped card (flat panel) ── */
 .mac-group {
   background: var(--mac-bg-card);
-  border-radius: var(--mac-radius-card);
+  border-radius: 14px;
   border: 0.5px solid var(--mac-border);
   overflow: hidden;
 }
@@ -459,7 +461,7 @@
   gap: 1px;
   background: var(--mac-separator);
   border: 0.5px solid var(--mac-border);
-  border-radius: var(--mac-radius-card);
+  border-radius: 14px;
   overflow: hidden;
   margin-bottom: var(--spacing-6);
 }
@@ -494,7 +496,7 @@
   gap: 1px;
   background: var(--mac-separator);
   border: 0.5px solid var(--mac-border);
-  border-radius: var(--mac-radius-card);
+  border-radius: 14px;
   overflow: hidden;
   margin-bottom: var(--spacing-6);
 }
@@ -601,7 +603,7 @@
 .resource-card {
   background: var(--mac-bg-card);
   border: 0.5px solid var(--mac-border);
-  border-radius: var(--mac-radius-card);
+  border-radius: 14px;
   padding: 16px;
 }
 
@@ -927,7 +929,7 @@
 .mac-badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
   font-size: var(--text-label2-size);
   font-weight: 600;
@@ -1154,7 +1156,7 @@
 .mac-sidebar__session {
   margin: 0 12px;
   padding: 12px 12px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1174,27 +1176,27 @@
 
 .mac-sidebar__user {
   font-size: var(--text-label1-size);
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .mac-sidebar__signout {
   width: 100%;
   padding: 9px 12px;
-  border-radius: var(--mac-radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--color-text-on-inverse);
   font-family: var(--font-family);
   font-size: var(--text-body2-size);
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
 .mac-sidebar__signout:hover {
-  background: var(--tint-critical-bg);
-  border-color: var(--v-critical-300);
-  color: var(--v-critical-600);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-on-inverse);
 }
 
 .mac-sidebar__version {
@@ -1245,7 +1247,7 @@
   gap: 16px;
   background: var(--mac-bg-card);
   border: 0.5px solid var(--mac-border);
-  border-radius: var(--mac-radius-card);
+  border-radius: 14px;
   padding: 20px;
   cursor: pointer;
   text-align: left;

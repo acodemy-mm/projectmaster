@@ -8,7 +8,7 @@ import {
 } from '../data/mockData';
 import { PROGRESS_GANTT_COLORS } from '../lib/progressColors';
 import { useProjects, dateToGanttStart, datesToGanttDuration } from '../context/ProjectContext';
-import { StatusBadge, PriorityBadge, SizeBadge, DesignStageBadge } from '../components/Badge';
+import { StatusBadge, PlanTaskStatusBadge, PriorityBadge, SizeBadge, DesignStageBadge } from '../components/Badge';
 import { AvatarGroup } from '../components/Avatar';
 import { IconEdit } from '../icons';
 
@@ -101,7 +101,7 @@ function PlanLogTable({ project }: { project: Project }) {
               : '—'}
           </span>
           <span className="plan-log__col plan-log__col--status">
-            <StatusBadge status={t.status} />
+            <PlanTaskStatusBadge status={t.status} />
           </span>
         </div>
       ))}
